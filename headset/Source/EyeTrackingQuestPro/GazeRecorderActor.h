@@ -54,7 +54,7 @@ struct FGazeFrame
  *  - projeta esse ponto numa câmera de captura mono (que segue o HMD) -> (u,v) 2D;
  *  - registra uma amostra de gaze.
  * No ritmo de VideoFps, captura um frame da mesma câmera e grava como .jpg.
- * Ao encerrar (EndPlay), grava a pasta de sessão: frames/*.jpg + gaze.json.
+ * Ao encerrar (EndPlay), grava a pasta de sessão: frames/000001.jpg + gaze.json.
  *
  * Como o vídeo e o (u,v) saem da MESMA câmera, o alinhamento 2D<->vídeo é exato e a
  * sincronização tempo<->frame é automática.
@@ -78,6 +78,11 @@ public:
 	/** Liga/desliga a bolinha em runtime SEM afetar o log/gravação. */
 	UFUNCTION(BlueprintCallable, Category = "Gaze")
 	void SetMarkerVisible(bool bVisible);
+
+	/** Encerra a sessão: grava o gaze.json final, para a captura e FECHA o app.
+	 *  Ligue isto ao botão B do controle direito (ver instruções no guia). */
+	UFUNCTION(BlueprintCallable, Category = "Gaze")
+	void StopSessionAndQuit();
 
 protected:
 	// ---------------- Configuração ----------------

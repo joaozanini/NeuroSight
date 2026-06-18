@@ -16,6 +16,7 @@
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Camera/PlayerCameraManager.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -80,6 +81,11 @@ void AGazeRecorderActor::BeginPlay()
 	}
 #endif
 
+	// Diagnostico: o eye tracker ja esta conectado? (No caminho OpenXR NAO existe StartEyeTracking;
+	// o GetGazeData funciona com o tracker conectado + permissao concedida + calibracao no device.)
+	UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] EyeTracker conectado: %s"),
+		UEyeTrackerFunctionLibrary::IsEyeTrackerConnected() ? TEXT("sim") : TEXT("nao (pode conectar depois)"));
+
 	// Pasta da sessão: Saved/GazeSessions/<timestamp>/frames
 	const FString SessionId = FDateTime::Now().ToString(TEXT("%Y-%m-%d_%H-%M-%S"));
 	SessionDir = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("GazeSessions"), SessionId);
@@ -133,6 +139,17 @@ float AGazeRecorderActor::TimeSinceStart() const
 void AGazeRecorderActor::SetMarkerVisible(bool bVisible)
 {
 	bShowMarker = bVisible;
+}
+
+void AGazeRecorderActor::StopSessionAndQuit()
+{
+	if (bSessionActive)
+	{
+		WriteSessionJson();      // grava o gaze.json final (frames ja estao no disco)
+		bSessionActive = false;  // para a captura/log
+		UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Sessao encerrada pelo usuario (B): JSON salvo, fechando o app."));
+	}
+	UKismetSystemLibrary::QuitGame(this, nullptr, EQuitPreference::Quit, /*bIgnorePlatformRestrictions=*/false);
 }
 
 void AGazeRecorderActor::Tick(float DeltaSeconds)
@@ -339,7 +356,13 @@ void AGazeRecorderActor::WriteSessionJson()
 	W->WriteObjectEnd();
 	W->Close();
 
+	int32 ValidCount = 0;
+	for (const FGazeSample& S : Samples)
+	{
+		if (S.bValid) { ++ValidCount; }
+	}
+
 	const FString JsonPath = FPaths::Combine(SessionDir, TEXT("gaze.json"));
 	FFileHelper::SaveStringToFile(Out, *JsonPath);
-	UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] JSON salvo: %s (%d amostras, %d frames)"), *JsonPath, Samples.Num(), FrameList.Num());
+	UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] JSON salvo: %s (%d amostras, %d validas, %d frames)"), *JsonPath, Samples.Num(), ValidCount, FrameList.Num());
 }
