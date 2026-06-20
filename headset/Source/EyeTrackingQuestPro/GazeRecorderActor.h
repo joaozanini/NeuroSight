@@ -91,6 +91,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gaze")
 	bool bShowMarker = true;
 
+	/** HUD de diagnóstico na tela (eye tracker conectado, gaze válido, screen X/Y, etc.).
+	 *  Funciona em build Development (não em Shipping). Desligue para sessões "limpas". */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gaze")
+	bool bShowDebugOnScreen = true;
+
 	/** Alcance do raycast do olhar (cm). */
 	UPROPERTY(EditAnywhere, Category = "Gaze")
 	float MaxTraceDistance = 1500.f;
@@ -113,9 +118,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Capture")
 	int32 FrameHeight = 1024;
 
-	/** Taxa de captura dos frames de vídeo (Hz). O gaze é amostrado a cada frame de jogo. */
+	/** Taxa de captura dos frames de VÍDEO (Hz). NÃO afeta o gaze, que é amostrado a cada
+	 *  frame de jogo (~72-90 Hz). Mais alto = vídeo mais suave, porém mais carga de GPU/readback. */
 	UPROPERTY(EditAnywhere, Category = "Capture")
-	float VideoFps = 15.f;
+	float VideoFps = 30.f;
 
 	/** Qualidade JPEG (0-100). */
 	UPROPERTY(EditAnywhere, Category = "Capture")

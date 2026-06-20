@@ -10,6 +10,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
 #include "TextureResource.h"
 #include "UnrealClient.h"
 
@@ -204,6 +205,31 @@ void AGazeRecorderActor::Tick(float DeltaSeconds)
 		GazeMarker->SetVisibility(false);
 	}
 	Samples.Add(S);
+
+#if !UE_BUILD_SHIPPING
+	// HUD de diagnostico na tela (build Development; nao aparece em Shipping). Toggle: bShowDebugOnScreen.
+	// Chaves fixas (101..107) fazem cada linha ATUALIZAR no lugar em vez de empilhar.
+	if (bShowDebugOnScreen && GEngine)
+	{
+		const bool bConn = UEyeTrackerFunctionLibrary::IsEyeTrackerConnected();
+		const int32 PxX = (S.UV.X >= 0.f) ? FMath::RoundToInt(S.UV.X * FrameWidth) : -1;
+		const int32 PxY = (S.UV.Y >= 0.f) ? FMath::RoundToInt(S.UV.Y * FrameHeight) : -1;
+		GEngine->AddOnScreenDebugMessage(101, 2.f, FColor::Cyan,
+			FString::Printf(TEXT("[EyeTracking] Conectado: %s"), bConn ? TEXT("SIM") : TEXT("NAO")));
+		GEngine->AddOnScreenDebugMessage(102, 2.f, S.bValid ? FColor::Green : FColor::Red,
+			FString::Printf(TEXT("Gaze valido: %s   Confidence: %.2f"), S.bValid ? TEXT("SIM") : TEXT("NAO"), S.Confidence));
+		GEngine->AddOnScreenDebugMessage(103, 2.f, FColor::White,
+			FString::Printf(TEXT("GazeOrigin: %s"), *Gaze.GazeOrigin.ToString()));
+		GEngine->AddOnScreenDebugMessage(104, 2.f, FColor::White,
+			FString::Printf(TEXT("GazeDir:    %s"), *Gaze.GazeDirection.ToString()));
+		GEngine->AddOnScreenDebugMessage(105, 2.f, FColor::White,
+			FString::Printf(TEXT("Ponto 3D (mundo): %s"), *S.World.ToString()));
+		GEngine->AddOnScreenDebugMessage(106, 2.f, FColor::White,
+			FString::Printf(TEXT("Screen X,Y: %d , %d px   (uv %.3f , %.3f)"), PxX, PxY, S.UV.X, S.UV.Y));
+		GEngine->AddOnScreenDebugMessage(107, 2.f, FColor::Yellow,
+			FString::Printf(TEXT("Amostras: %d   Frames: %d   t=%.1fs"), Samples.Num(), FrameList.Num(), T));
+	}
+#endif
 
 	// 3) Captura de frame no ritmo de VideoFps.
 	if (VideoFps > 0.f && T >= NextFrameTime)
