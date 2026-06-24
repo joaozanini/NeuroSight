@@ -127,6 +127,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Capture")
 	int32 JpegQuality = 85;
 
+	/** Endpoint da API para onde o gaze.json é enviado ao encerrar (botão B). Vazio = não envia. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upload")
+	FString UploadUrl;
+
+	/** Timeout do upload do gaze.json (segundos). */
+	UPROPERTY(EditAnywhere, Category = "Upload")
+	float UploadTimeoutSeconds = 15.f;
+
 	// ---------------- Componentes ----------------
 
 	UPROPERTY(VisibleAnywhere, Category = "Gaze")
@@ -152,6 +160,14 @@ private:
 	void WriteSessionJson();
 
 	float TimeSinceStart() const;
+
+	/** Envia o gaze.json para UploadUrl; fecha o app quando terminar (ou no timeout de segurança). */
+	void UploadSessionJson();
+	/** Fecha o app (uma vez só). */
+	void QuitNow();
+
+	bool bQuitting = false;
+	FTimerHandle QuitFallbackTimer;
 
 	FString SessionDir;
 	const FString FramesSubdir = TEXT("frames");
