@@ -1,0 +1,18 @@
+# Sobe só o PostgreSQL (para quando você for usar Postgres em vez do SQLite do dev).
+# Uso:  docker compose up -d
+# Depois: QUESTPRO_DB_URL=postgresql+psycopg://questpro:questpro@localhost:5432/questpro
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: questpro
+      POSTGRES_PASSWORD: questpro
+      POSTGRES_DB: questpro
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
