@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Interfaces/IHttpRequest.h"   // FHttpResponsePtr nas assinaturas dos callbacks de upload
 #include "GazeRecorderActor.generated.h"
 
 class UStaticMeshComponent;
@@ -127,13 +128,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Capture")
 	int32 JpegQuality = 85;
 
-	/** Endpoint da API para onde o gaze.json é enviado ao encerrar (botão B). Vazio = não envia. */
+	/** Endpoint da API: a rota .../api/v1/sessions. Ao encerrar (botão B) a sessão é enviada em
+	 *  3 passos: cria (gaze.json) -> envia os frames em lotes -> finaliza. Vazio = não envia. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upload")
 	FString UploadUrl;
 
-	/** Timeout do upload do gaze.json (segundos). */
+	/** Timeout de cada requisição HTTP do upload (segundos). */
 	UPROPERTY(EditAnywhere, Category = "Upload")
 	float UploadTimeoutSeconds = 15.f;
+
+	/** Quantos frames JPEG por requisição multipart. Lotes menores = menos memória/risco no Quest. */
+	UPROPERTY(EditAnywhere, Category = "Upload")
+	int32 UploadBatchSize = 20;
 
 	// ---------------- Componentes ----------------
 
@@ -161,13 +167,27 @@ private:
 
 	float TimeSinceStart() const;
 
-	/** Envia o gaze.json para UploadUrl; fecha o app quando terminar (ou no timeout de segurança). */
-	void UploadSessionJson();
+	/** Sequência de upload ao encerrar: cria a sessão (gaze.json) -> envia os frames em lotes ->
+	 *  finaliza (monta o MP4 no servidor). Só fecha o app no fim ou no timeout de segurança. */
+	void BeginUploadSequence();
+	void OnCreateComplete(FHttpResponsePtr Response, bool bSucceeded);
+	void PumpFrameBatches();
+	void SendFrameBatch(int32 Start, int32 Count, int32 Retry);
+	void OnBatchComplete(int32 Start, int32 Count, int32 Retry, FHttpResponsePtr Response, bool bSucceeded);
+	void SendComplete();
+	/** (Re)arma o timer que fecha o app se o upload travar por 'Seconds' sem progresso. */
+	void RearmQuitFallback(float Seconds);
 	/** Fecha o app (uma vez só). */
 	void QuitNow();
 
 	bool bQuitting = false;
 	FTimerHandle QuitFallbackTimer;
+
+	// Estado da sequência de upload (create -> frames -> complete).
+	FString ServerSessionId;
+	TArray<FString> PendingFrameFiles;
+	int32 NextFrameCursor = 0;
+	int32 InFlightBatches = 0;
 
 	FString SessionDir;
 	const FString FramesSubdir = TEXT("frames");

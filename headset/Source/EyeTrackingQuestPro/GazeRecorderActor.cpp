@@ -33,6 +33,11 @@
 #include "Modules/ModuleManager.h"
 #include "Async/Async.h"
 #include "Serialization/JsonWriter.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
+#include "Dom/JsonObject.h"
+#include "HAL/FileManager.h"
+#include "Misc/Guid.h"
 
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
@@ -155,11 +160,11 @@ void AGazeRecorderActor::StopSessionAndQuit()
 		UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Sessao encerrada pelo usuario (B): JSON salvo."));
 	}
 
-	// Se houver endpoint configurado, envia o gaze.json e SO fecha quando o upload terminar
-	// (no callback) ou no timeout de seguranca. Senao, fecha direto.
+	// Se houver endpoint configurado, envia a sessao (JSON + frames) e SO fecha quando o upload
+	// terminar (no callback final) ou no timeout de seguranca. Senao, fecha direto.
 	if (!UploadUrl.IsEmpty())
 	{
-		UploadSessionJson();
+		BeginUploadSequence();
 	}
 	else
 	{
@@ -168,7 +173,18 @@ void AGazeRecorderActor::StopSessionAndQuit()
 	}
 }
 
-void AGazeRecorderActor::UploadSessionJson()
+void AGazeRecorderActor::RearmQuitFallback(float Seconds)
+{
+	if (bQuitting)
+	{
+		return;
+	}
+	// Enquanto houver progresso, re-arma o timer -> um upload em andamento nunca e morto no meio;
+	// se travar (sem progresso por 'Seconds'), QuitNow fecha o app mesmo assim.
+	GetWorldTimerManager().SetTimer(QuitFallbackTimer, this, &AGazeRecorderActor::QuitNow, Seconds, false);
+}
+
+void AGazeRecorderActor::BeginUploadSequence()
 {
 	const FString JsonPath = FPaths::Combine(SessionDir, TEXT("gaze.json"));
 	FString JsonContent;
@@ -179,9 +195,20 @@ void AGazeRecorderActor::UploadSessionJson()
 		return;
 	}
 
-	// Timer de seguranca: garante que o app feche mesmo se o upload travar / nao responder.
-	GetWorldTimerManager().SetTimer(QuitFallbackTimer, this, &AGazeRecorderActor::QuitNow, UploadTimeoutSeconds + 3.f, false);
+	// Lista os frames ja gravados (escritos em background durante a sessao). Ordem lexicografica
+	// dos nomes "000001.jpg" = ordem de captura.
+	PendingFrameFiles.Reset();
+	const FString FramesAbs = FPaths::Combine(SessionDir, FramesSubdir);
+	IFileManager::Get().FindFiles(PendingFrameFiles, *FPaths::Combine(FramesAbs, TEXT("*.jpg")), true, false);
+	PendingFrameFiles.Sort();
+	NextFrameCursor = 0;
+	InFlightBatches = 0;
+	ServerSessionId.Reset();
 
+	RearmQuitFallback(UploadTimeoutSeconds + 5.f);
+
+	// Passo 1: cria a sessao no servidor enviando o gaze.json. A resposta traz o id e quantos
+	// frames o servidor ja tem (para retomar um upload interrompido).
 	const FHttpRequestRef Req = FHttpModule::Get().CreateRequest();
 	Req->SetURL(UploadUrl);
 	Req->SetVerb(TEXT("POST"));
@@ -190,20 +217,174 @@ void AGazeRecorderActor::UploadSessionJson()
 	Req->SetContentAsString(JsonContent);
 	Req->SetTimeout(UploadTimeoutSeconds);
 	Req->OnProcessRequestComplete().BindWeakLambda(this,
-		[this](FHttpRequestPtr /*Request*/, FHttpResponsePtr Response, bool bSucceeded)
+		[this](FHttpRequestPtr, FHttpResponsePtr Response, bool bSucceeded)
 		{
-			if (bSucceeded && Response.IsValid())
-			{
-				UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Upload concluido. HTTP %d"), Response->GetResponseCode());
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[GazeRecorder] Upload FALHOU (erro de rede ou timeout)."));
-			}
+			OnCreateComplete(Response, bSucceeded);
+		});
+	Req->ProcessRequest();
+	UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Criando sessao na API %s (%d frames a enviar)..."),
+		*UploadUrl, PendingFrameFiles.Num());
+}
+
+void AGazeRecorderActor::OnCreateComplete(FHttpResponsePtr Response, bool bSucceeded)
+{
+	const int32 Code = (bSucceeded && Response.IsValid()) ? Response->GetResponseCode() : 0;
+	if (Code < 200 || Code >= 300)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[GazeRecorder] Falha ao criar sessao na API (HTTP %d). Fechando."), Code);
+		QuitNow();
+		return;
+	}
+
+	TSharedPtr<FJsonObject> Obj;
+	const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Response->GetContentAsString());
+	if (FJsonSerializer::Deserialize(Reader, Obj) && Obj.IsValid())
+	{
+		Obj->TryGetStringField(TEXT("id"), ServerSessionId);
+		double Received = 0.0;
+		if (Obj->TryGetNumberField(TEXT("received_frames"), Received))
+		{
+			NextFrameCursor = FMath::Clamp(static_cast<int32>(Received), 0, PendingFrameFiles.Num());  // retomada
+		}
+	}
+
+	if (ServerSessionId.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("[GazeRecorder] Resposta da API sem 'id'. Fechando."));
+		QuitNow();
+		return;
+	}
+
+	RearmQuitFallback(UploadTimeoutSeconds + 5.f);
+	UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Sessao %s criada (retomando de %d/%d). Enviando frames..."),
+		*ServerSessionId, NextFrameCursor, PendingFrameFiles.Num());
+	PumpFrameBatches();
+}
+
+void AGazeRecorderActor::PumpFrameBatches()
+{
+	const int32 MaxInFlight = 2;  // throttle: no maximo 2 lotes simultaneos no stack HTTP do Quest
+	while (InFlightBatches < MaxInFlight && NextFrameCursor < PendingFrameFiles.Num())
+	{
+		const int32 Start = NextFrameCursor;
+		const int32 Count = FMath::Min(FMath::Max(1, UploadBatchSize), PendingFrameFiles.Num() - Start);
+		NextFrameCursor += Count;
+		++InFlightBatches;
+		SendFrameBatch(Start, Count, 0);
+	}
+
+	if (InFlightBatches == 0 && NextFrameCursor >= PendingFrameFiles.Num())
+	{
+		SendComplete();  // todos os frames enviados -> finaliza
+	}
+}
+
+void AGazeRecorderActor::SendFrameBatch(int32 Start, int32 Count, int32 Retry)
+{
+	const FString FramesAbs = FPaths::Combine(SessionDir, FramesSubdir);
+	const FString Boundary = TEXT("----QuestProBoundary") + FGuid::NewGuid().ToString(EGuidFormats::Digits);
+
+	// Monta o corpo multipart/form-data a mao (UE nao tem helper): cada frame e uma parte
+	// name="frames"; filename="000001.jpg" (o servidor usa o filename pra nomear o arquivo).
+	TArray<uint8> Body;
+	auto AppendAscii = [&Body](const FString& S)
+	{
+		const FTCHARToUTF8 Conv(*S);
+		Body.Append(reinterpret_cast<const uint8*>(Conv.Get()), Conv.Length());
+	};
+
+	int32 Appended = 0;
+	for (int32 i = Start; i < Start + Count && i < PendingFrameFiles.Num(); ++i)
+	{
+		const FString FileName = PendingFrameFiles[i];
+		TArray<uint8> FileData;
+		if (!FFileHelper::LoadFileToArray(FileData, *FPaths::Combine(FramesAbs, FileName)))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[GazeRecorder] Frame ilegivel, pulando: %s"), *FileName);
+			continue;
+		}
+		AppendAscii(FString::Printf(TEXT("--%s\r\n"), *Boundary));
+		AppendAscii(FString::Printf(TEXT("Content-Disposition: form-data; name=\"frames\"; filename=\"%s\"\r\n"), *FileName));
+		AppendAscii(TEXT("Content-Type: image/jpeg\r\n\r\n"));
+		Body.Append(FileData);
+		AppendAscii(TEXT("\r\n"));
+		++Appended;
+	}
+	AppendAscii(FString::Printf(TEXT("--%s--\r\n"), *Boundary));
+
+	if (Appended == 0)
+	{
+		// nada legivel neste lote -> libera o slot e segue
+		--InFlightBatches;
+		PumpFrameBatches();
+		return;
+	}
+
+	const FString Url = FString::Printf(TEXT("%s/%s/frames"), *UploadUrl, *ServerSessionId);
+	const FHttpRequestRef Req = FHttpModule::Get().CreateRequest();
+	Req->SetURL(Url);
+	Req->SetVerb(TEXT("POST"));
+	Req->SetHeader(TEXT("Content-Type"), FString::Printf(TEXT("multipart/form-data; boundary=%s"), *Boundary));
+	Req->SetContent(MoveTemp(Body));
+	Req->SetTimeout(UploadTimeoutSeconds);
+	Req->OnProcessRequestComplete().BindWeakLambda(this,
+		[this, Start, Count, Retry](FHttpRequestPtr, FHttpResponsePtr Response, bool bSucceeded)
+		{
+			OnBatchComplete(Start, Count, Retry, Response, bSucceeded);
+		});
+	Req->ProcessRequest();
+}
+
+void AGazeRecorderActor::OnBatchComplete(int32 Start, int32 Count, int32 Retry, FHttpResponsePtr Response, bool bSucceeded)
+{
+	const int32 MaxRetries = 3;
+	const int32 Code = (bSucceeded && Response.IsValid()) ? Response->GetResponseCode() : 0;
+
+	if (Code >= 200 && Code < 300)
+	{
+		RearmQuitFallback(UploadTimeoutSeconds + 5.f);  // progrediu -> adia o fallback
+		--InFlightBatches;
+		UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Lote [%d..%d] OK (HTTP %d). Cursor %d/%d."),
+			Start, Start + Count - 1, Code, FMath::Min(NextFrameCursor, PendingFrameFiles.Num()), PendingFrameFiles.Num());
+		PumpFrameBatches();
+	}
+	else if (Retry < MaxRetries)
+	{
+		// mantem o slot in-flight e re-tenta o MESMO lote
+		UE_LOG(LogTemp, Warning, TEXT("[GazeRecorder] Lote [%d..%d] falhou (HTTP %d). Retry %d/%d."),
+			Start, Start + Count - 1, Code, Retry + 1, MaxRetries);
+		SendFrameBatch(Start, Count, Retry + 1);
+	}
+	else
+	{
+		--InFlightBatches;
+		UE_LOG(LogTemp, Error, TEXT("[GazeRecorder] Lote [%d..%d] falhou em definitivo (HTTP %d). Seguindo (upload parcial)."),
+			Start, Start + Count - 1, Code);
+		PumpFrameBatches();
+	}
+}
+
+void AGazeRecorderActor::SendComplete()
+{
+	const FString Url = FString::Printf(TEXT("%s/%s/complete"), *UploadUrl, *ServerSessionId);
+	// O servidor monta o MP4 aqui (pode demorar com muitos frames) -> timeout e fallback folgados.
+	RearmQuitFallback(UploadTimeoutSeconds + 35.f);
+
+	const FHttpRequestRef Req = FHttpModule::Get().CreateRequest();
+	Req->SetURL(Url);
+	Req->SetVerb(TEXT("POST"));
+	Req->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Req->SetContentAsString(TEXT("{}"));
+	Req->SetTimeout(UploadTimeoutSeconds + 30.f);
+	Req->OnProcessRequestComplete().BindWeakLambda(this,
+		[this](FHttpRequestPtr, FHttpResponsePtr Response, bool bSucceeded)
+		{
+			const int32 Code = (bSucceeded && Response.IsValid()) ? Response->GetResponseCode() : 0;
+			UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Complete -> HTTP %d. Encerrando."), Code);
 			QuitNow();
 		});
 	Req->ProcessRequest();
-	UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Enviando gaze.json (%d chars) para %s ..."), JsonContent.Len(), *UploadUrl);
+	UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Finalizando sessao (complete) — montando MP4 no servidor..."));
 }
 
 void AGazeRecorderActor::QuitNow()
