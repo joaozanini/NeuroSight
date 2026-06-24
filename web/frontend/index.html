@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuestPro Eye-Tracking — Sessões</title>
+    <script>
+      // Aplica o tema antes do React renderizar (evita flash de tema errado no load).
+      (function () {
+        try {
+          var s = localStorage.getItem('questpro-theme');
+          var t = (s === 'light' || s === 'dark') ? s
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+          document.documentElement.dataset.theme = t;
+        } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
