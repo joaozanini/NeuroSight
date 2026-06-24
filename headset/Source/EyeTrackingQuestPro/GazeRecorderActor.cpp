@@ -19,6 +19,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Camera/PlayerCameraManager.h"
+#include "HttpModule.h"
+#include "Interfaces/IHttpRequest.h"
+#include "Interfaces/IHttpResponse.h"
+#include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 
 #include "Misc/Paths.h"
@@ -148,8 +152,68 @@ void AGazeRecorderActor::StopSessionAndQuit()
 	{
 		WriteSessionJson();      // grava o gaze.json final (frames ja estao no disco)
 		bSessionActive = false;  // para a captura/log
-		UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Sessao encerrada pelo usuario (B): JSON salvo, fechando o app."));
+		UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Sessao encerrada pelo usuario (B): JSON salvo."));
 	}
+
+	// Se houver endpoint configurado, envia o gaze.json e SO fecha quando o upload terminar
+	// (no callback) ou no timeout de seguranca. Senao, fecha direto.
+	if (!UploadUrl.IsEmpty())
+	{
+		UploadSessionJson();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] UploadUrl vazio -> sem upload. Fechando."));
+		QuitNow();
+	}
+}
+
+void AGazeRecorderActor::UploadSessionJson()
+{
+	const FString JsonPath = FPaths::Combine(SessionDir, TEXT("gaze.json"));
+	FString JsonContent;
+	if (!FFileHelper::LoadFileToString(JsonContent, *JsonPath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GazeRecorder] Nao consegui ler %s para upload. Fechando."), *JsonPath);
+		QuitNow();
+		return;
+	}
+
+	// Timer de seguranca: garante que o app feche mesmo se o upload travar / nao responder.
+	GetWorldTimerManager().SetTimer(QuitFallbackTimer, this, &AGazeRecorderActor::QuitNow, UploadTimeoutSeconds + 3.f, false);
+
+	const FHttpRequestRef Req = FHttpModule::Get().CreateRequest();
+	Req->SetURL(UploadUrl);
+	Req->SetVerb(TEXT("POST"));
+	Req->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Req->SetHeader(TEXT("X-Session-Id"), FPaths::GetCleanFilename(SessionDir));
+	Req->SetContentAsString(JsonContent);
+	Req->SetTimeout(UploadTimeoutSeconds);
+	Req->OnProcessRequestComplete().BindWeakLambda(this,
+		[this](FHttpRequestPtr /*Request*/, FHttpResponsePtr Response, bool bSucceeded)
+		{
+			if (bSucceeded && Response.IsValid())
+			{
+				UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Upload concluido. HTTP %d"), Response->GetResponseCode());
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[GazeRecorder] Upload FALHOU (erro de rede ou timeout)."));
+			}
+			QuitNow();
+		});
+	Req->ProcessRequest();
+	UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Enviando gaze.json (%d chars) para %s ..."), JsonContent.Len(), *UploadUrl);
+}
+
+void AGazeRecorderActor::QuitNow()
+{
+	if (bQuitting)
+	{
+		return;
+	}
+	bQuitting = true;
+	GetWorldTimerManager().ClearTimer(QuitFallbackTimer);
 	UKismetSystemLibrary::QuitGame(this, nullptr, EQuitPreference::Quit, /*bIgnorePlatformRestrictions=*/false);
 }
 

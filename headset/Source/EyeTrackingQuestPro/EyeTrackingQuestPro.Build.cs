@@ -13,7 +13,8 @@ public class EyeTrackingQuestPro : ModuleRules
 			"HeadMountedDisplay",  // POV do HMD via PlayerCameraManager
 			"RenderCore", "RHI",   // ReadPixels do render target
 			"ImageWrapper",        // encode JPEG dos frames
-			"Json"                 // exportação do gaze.json
+			"Json",                // exportação do gaze.json
+			"HTTP"                 // upload do gaze.json para a API
 		});
 
 		if (Target.Platform == UnrealTargetPlatform.Android)
