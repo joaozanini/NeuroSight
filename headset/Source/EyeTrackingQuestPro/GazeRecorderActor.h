@@ -183,6 +183,14 @@ private:
 	bool bQuitting = false;
 	FTimerHandle QuitFallbackTimer;
 
+	// Em Android, aguarda a permissão de eye tracking ser concedida pelo usuário antes de iniciar
+	// o tracker. Em outras plataformas considera concedido automaticamente.
+#if PLATFORM_ANDROID
+	bool bPermissionReady = false;
+#else
+	bool bPermissionReady = true;
+#endif
+
 	// Estado da sequência de upload (create -> frames -> complete).
 	FString ServerSessionId;
 	TArray<FString> PendingFrameFiles;

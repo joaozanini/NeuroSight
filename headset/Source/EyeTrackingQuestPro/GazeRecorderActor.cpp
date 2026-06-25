@@ -44,6 +44,7 @@
 
 #if PLATFORM_ANDROID
 #include "AndroidPermissionFunctionLibrary.h"
+#include "AndroidPermissionCallbackProxy.h"
 #endif
 
 AGazeRecorderActor::AGazeRecorderActor()
@@ -83,11 +84,33 @@ void AGazeRecorderActor::BeginPlay()
 	FrameList.Reset();
 
 	// Permissão de eye tracking (obrigatória no build standalone do Quest).
+	// Usamos o callback para só ativar o tracker depois que o usuário concede a permissão,
+	// evitando que os primeiros frames de Tick() tentem ler gaze sem permissão concedida.
 #if PLATFORM_ANDROID
 	{
-		TArray<FString> Perms;
-		Perms.Add(TEXT("com.oculus.permission.EYE_TRACKING"));
-		UAndroidPermissionFunctionLibrary::AcquirePermissions(Perms);
+		static const FString EyePerm = TEXT("com.oculus.permission.EYE_TRACKING");
+		if (UAndroidPermissionFunctionLibrary::CheckPermission(EyePerm))
+		{
+			// Já concedida em launch anterior — pode ativar direto.
+			bPermissionReady = true;
+			UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Permissao EYE_TRACKING ja concedida."));
+		}
+		else
+		{
+			TArray<FString> Perms;
+			Perms.Add(EyePerm);
+			UAndroidPermissionCallbackProxy* Proxy = UAndroidPermissionFunctionLibrary::AcquirePermissions(Perms);
+			if (Proxy)
+			{
+				Proxy->OnPermissionsGranted.AddWeakLambda(this,
+					[this](const TArray<FString>& /*Permissions*/, const TArray<bool>& GrantResults)
+					{
+						bPermissionReady = GrantResults.ContainsByPredicate([](bool b){ return b; });
+						UE_LOG(LogTemp, Display, TEXT("[GazeRecorder] Permissao EYE_TRACKING: %s"),
+							bPermissionReady ? TEXT("concedida") : TEXT("negada — reinicie o app"));
+					});
+			}
+		}
 	}
 #endif
 
@@ -422,7 +445,7 @@ void AGazeRecorderActor::Tick(float DeltaSeconds)
 	S.Time = T;
 
 	FEyeTrackerGazeData Gaze;
-	if (UEyeTrackerFunctionLibrary::GetGazeData(Gaze))
+	if (bPermissionReady && UEyeTrackerFunctionLibrary::GetGazeData(Gaze))
 	{
 		const FVector Start = Gaze.GazeOrigin;
 		const FVector Dir = Gaze.GazeDirection.GetSafeNormal();
@@ -460,7 +483,9 @@ void AGazeRecorderActor::Tick(float DeltaSeconds)
 		const int32 PxX = (S.UV.X >= 0.f) ? FMath::RoundToInt(S.UV.X * FrameWidth) : -1;
 		const int32 PxY = (S.UV.Y >= 0.f) ? FMath::RoundToInt(S.UV.Y * FrameHeight) : -1;
 		GEngine->AddOnScreenDebugMessage(101, 2.f, FColor::Cyan,
-			FString::Printf(TEXT("[EyeTracking] Conectado: %s"), bConn ? TEXT("SIM") : TEXT("NAO")));
+			FString::Printf(TEXT("[EyeTracking] Conectado: %s  Permissao: %s"),
+				bConn ? TEXT("SIM") : TEXT("NAO"),
+				bPermissionReady ? TEXT("OK") : TEXT("aguardando")));
 		GEngine->AddOnScreenDebugMessage(102, 2.f, S.bValid ? FColor::Green : FColor::Red,
 			FString::Printf(TEXT("Gaze valido: %s   Confidence: %.2f"), S.bValid ? TEXT("SIM") : TEXT("NAO"), S.Confidence));
 		GEngine->AddOnScreenDebugMessage(103, 2.f, FColor::White,
