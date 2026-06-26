@@ -51,6 +51,11 @@ AGazeRecorderActor::AGazeRecorderActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	// Endpoint padrao da API = este PC na rede local (rota base; o codigo anexa /{id}/frames e
+	// /{id}/complete). Pode ser sobrescrito no Details do ator. TEM que ser um endereco que o
+	// oculos alcance (NAO localhost) — trocar aqui se o servidor mudar de IP/maquina.
+	UploadUrl = TEXT("http://192.168.0.6:8000/api/v1/sessions");
+
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
 
