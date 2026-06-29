@@ -107,7 +107,7 @@ void AGazeRecorderActor::BeginPlay()
 			UAndroidPermissionCallbackProxy* Proxy = UAndroidPermissionFunctionLibrary::AcquirePermissions(Perms);
 			if (Proxy)
 			{
-				Proxy->OnPermissionsGranted.AddWeakLambda(this,
+				Proxy->OnPermissionsGrantedDelegate.AddWeakLambda(this,
 					[this](const TArray<FString>& /*Permissions*/, const TArray<bool>& GrantResults)
 					{
 						bPermissionReady = GrantResults.ContainsByPredicate([](bool b){ return b; });
@@ -449,8 +449,20 @@ void AGazeRecorderActor::Tick(float DeltaSeconds)
 	FGazeSample S;
 	S.Time = T;
 
+#if PLATFORM_ANDROID
+	// Fallback anti-travamento: se o callback de permissao nao disparou (perdido/race) mas a
+	// permissao ja foi concedida, libera a leitura. So roda enquanto bPermissionReady for false
+	// (curto-circuita depois), entao o custo de JNI fica limitado ao intervalo pre-concessao.
+	if (!bPermissionReady && UAndroidPermissionFunctionLibrary::CheckPermission(TEXT("com.oculus.permission.EYE_TRACKING")))
+	{
+		bPermissionReady = true;
+	}
+#endif
+
+	// Exige direcao de olhar nao-degenerada: no caminho OpenXR, GetGazeData pode retornar true
+	// com direcao ~zero quando o tracker ainda nao tem dado valido (sem calibracao/foco).
 	FEyeTrackerGazeData Gaze;
-	if (bPermissionReady && UEyeTrackerFunctionLibrary::GetGazeData(Gaze))
+	if (bPermissionReady && UEyeTrackerFunctionLibrary::GetGazeData(Gaze) && !Gaze.GazeDirection.IsNearlyZero())
 	{
 		const FVector Start = Gaze.GazeOrigin;
 		const FVector Dir = Gaze.GazeDirection.GetSafeNormal();
