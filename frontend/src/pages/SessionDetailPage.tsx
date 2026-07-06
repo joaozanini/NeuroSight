@@ -63,6 +63,13 @@ export default function SessionDetailPage() {
         </div>
       </div>
 
+      {sess.status === 'processing' && (
+        <p className="notice">
+          <span>⏳</span>
+          <span>O vídeo está sendo montado no servidor — clique em “Sessões” e volte, ou recarregue em instantes.</span>
+        </p>
+      )}
+
       {sess.valid_sample_count === 0 && (
         <p className="notice">
           <span>ⓘ</span>

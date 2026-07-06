@@ -9,7 +9,4 @@ opencv-python-headless>=4.9
 imageio>=2.34
 imageio-ffmpeg>=0.5
 requests>=2.31
-
-# Para PostgreSQL (servidor), instale também:
-#   pip install "psycopg[binary]>=3.1"
-# e use DB_URL=postgresql+psycopg://questpro:questpro@localhost:5432/questpro
+psycopg[binary]>=3.1   # driver do PostgreSQL (usado quando QUESTPRO_DB_URL aponta p/ Postgres)

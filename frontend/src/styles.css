@@ -338,6 +338,10 @@ button.link.danger {
   color: var(--warn);
   background: var(--warn-weak);
 }
+.badge.processing {
+  color: var(--accent);
+  background: var(--accent-weak);
+}
 .badge.failed {
   color: var(--danger);
   background: var(--danger-weak);

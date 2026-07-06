@@ -16,9 +16,13 @@ registros e permite visualizar cada um **com e sem heatmap** (overlay no navegad
 - `frames/000001.jpg ...`: os quadros gravados. A API monta o `video.mp4` a partir deles.
 
 ## Status
-- **Fase 1 — Backend (FastAPI):** ✅ implementado (ingestão + leitura + montagem do MP4).
-- **Fase 2 — Frontend (React + heatmap no canvas):** ⏳ a fazer.
-- **Fase 3 — App UE envia os frames** (hoje só manda o JSON): ⏳ a fazer (recompila o APK).
+- **Fase 1 — Backend (FastAPI):** ✅ ingestão + leitura + montagem do MP4 (em background, status `processing`).
+- **Fase 2 — Frontend (React + heatmap no canvas):** ✅ lista + viewer com/sem heatmap, tema claro/escuro.
+- **Fase 3 — App UE envia vídeo+JSON:** ✅ protocolo create→frames→complete (com `X-Api-Key`).
+- **Produção:** ✅ Docker (site+API+Postgres) — **ver [DEPLOY.md](DEPLOY.md)** para subir no servidor.
+
+> Em produção a API exige `X-Api-Key` nos endpoints de escrita quando `QUESTPRO_API_KEY`
+> está definida; a mesma origem serve o site (build do React) e a API (sem CORS).
 
 ---
 

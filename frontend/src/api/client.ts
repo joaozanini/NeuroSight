@@ -64,7 +64,21 @@ export async function getSession(id: string): Promise<SessionDetail> {
   return r.json()
 }
 
+/** Deleta uma sessão. Se o servidor exigir chave (X-Api-Key), pede uma vez e guarda no localStorage. */
 export async function deleteSession(id: string): Promise<void> {
-  const r = await fetch(`${API}/sessions/${id}`, { method: 'DELETE' })
+  const KEY = 'questpro-api-key'
+  let apiKey = localStorage.getItem(KEY) ?? ''
+
+  const attempt = (k: string) =>
+    fetch(`${API}/sessions/${id}`, { method: 'DELETE', headers: k ? { 'X-Api-Key': k } : {} })
+
+  let r = await attempt(apiKey)
+  if (r.status === 401) {
+    const typed = window.prompt('Este servidor exige a chave da API (X-Api-Key) para apagar:')
+    if (!typed) throw new Error('operação cancelada — chave não informada')
+    apiKey = typed.trim()
+    r = await attempt(apiKey)
+    if (r.ok) localStorage.setItem(KEY, apiKey)
+  }
   if (!r.ok) throw new Error(`delete falhou: HTTP ${r.status}`)
 }
