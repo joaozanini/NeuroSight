@@ -101,9 +101,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Gaze")
 	float MaxTraceDistance = 1500.f;
 
-	/** Diâmetro da bolinha (cm). */
+	/** Diâmetro da bolinha (cm). 30 cm = bem visível p/ diagnóstico; reduza p/ sessões reais
+	 *  (ajustável no Details da instância, sem recompilar). */
 	UPROPERTY(EditAnywhere, Category = "Gaze")
-	float MarkerSize = 5.f;
+	float MarkerSize = 30.f;
 
 	/** Material da bolinha (de preferência Unlit/Emissive vermelho). Se nulo, cria um dinâmico vermelho. */
 	UPROPERTY(EditAnywhere, Category = "Gaze")
@@ -132,6 +133,11 @@ protected:
 	 *  3 passos: cria (gaze.json) -> envia os frames em lotes -> finaliza. Vazio = não envia. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upload")
 	FString UploadUrl;
+
+	/** Chave enviada no header X-Api-Key em todas as requisições do upload. Deixe igual à
+	 *  QUESTPRO_API_KEY do servidor; vazio = não envia o header (servidor aberto/dev). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upload")
+	FString ApiKey;
 
 	/** Timeout de cada requisição HTTP do upload (segundos). */
 	UPROPERTY(EditAnywhere, Category = "Upload")

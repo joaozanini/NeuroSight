@@ -242,6 +242,10 @@ void AGazeRecorderActor::BeginUploadSequence()
 	Req->SetVerb(TEXT("POST"));
 	Req->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Req->SetHeader(TEXT("X-Session-Id"), FPaths::GetCleanFilename(SessionDir));
+	if (!ApiKey.IsEmpty())
+	{
+		Req->SetHeader(TEXT("X-Api-Key"), ApiKey);
+	}
 	Req->SetContentAsString(JsonContent);
 	Req->SetTimeout(UploadTimeoutSeconds);
 	Req->OnProcessRequestComplete().BindWeakLambda(this,
@@ -353,6 +357,10 @@ void AGazeRecorderActor::SendFrameBatch(int32 Start, int32 Count, int32 Retry)
 	Req->SetURL(Url);
 	Req->SetVerb(TEXT("POST"));
 	Req->SetHeader(TEXT("Content-Type"), FString::Printf(TEXT("multipart/form-data; boundary=%s"), *Boundary));
+	if (!ApiKey.IsEmpty())
+	{
+		Req->SetHeader(TEXT("X-Api-Key"), ApiKey);
+	}
 	Req->SetContent(MoveTemp(Body));
 	Req->SetTimeout(UploadTimeoutSeconds);
 	Req->OnProcessRequestComplete().BindWeakLambda(this,
@@ -402,6 +410,10 @@ void AGazeRecorderActor::SendComplete()
 	Req->SetURL(Url);
 	Req->SetVerb(TEXT("POST"));
 	Req->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	if (!ApiKey.IsEmpty())
+	{
+		Req->SetHeader(TEXT("X-Api-Key"), ApiKey);
+	}
 	Req->SetContentAsString(TEXT("{}"));
 	Req->SetTimeout(UploadTimeoutSeconds + 30.f);
 	Req->OnProcessRequestComplete().BindWeakLambda(this,
@@ -515,6 +527,31 @@ void AGazeRecorderActor::Tick(float DeltaSeconds)
 			FString::Printf(TEXT("Screen X,Y: %d , %d px   (uv %.3f , %.3f)"), PxX, PxY, S.UV.X, S.UV.Y));
 		GEngine->AddOnScreenDebugMessage(107, 2.f, FColor::Yellow,
 			FString::Printf(TEXT("Amostras: %d   Frames: %d   t=%.1fs"), Samples.Num(), FrameList.Num(), T));
+
+		// Estado do MARKER: diagnostica "gaze valido mas bolinha invisivel" (mesh/material ausentes,
+		// bolinha colada no olho = clipada pelo near plane, ou longe demais = raio sem hit).
+		const float MarkerDistM = S.bValid ? FVector::Dist(S.World, CamLoc) / 100.f : -1.f;
+		UMaterialInterface* MarkerMat = GazeMarker->GetMaterial(0);
+		const TCHAR* DistWarn = TEXT("");
+		if (S.bValid && MarkerDistM >= 0.f && MarkerDistM < 0.3f)
+		{
+			DistWarn = TEXT("  <- COLADO NO OLHO (trace batendo em algo? near clip)");
+		}
+		else if (S.bValid && MarkerDistM > (MaxTraceDistance / 100.f) * 0.99f)
+		{
+			DistWarn = TEXT("  <- raio sem hit (bolinha no fim do raio, pequena demais p/ ver)");
+		}
+		const FVector MarkerPos = GazeMarker->GetComponentLocation(); // onde a bolinha REALMENTE esta (mesmo oculta)
+		GEngine->AddOnScreenDebugMessage(108, 2.f, FColor::Orange,
+			FString::Printf(TEXT("Marker: vis=%d  mesh=%s  mat=%s  dist=%.2fm%s"),
+				GazeMarker->IsVisible() ? 1 : 0,
+				GazeMarker->GetStaticMesh() ? TEXT("OK") : TEXT("NULL!"),
+				MarkerMat ? *MarkerMat->GetName() : TEXT("NULL"),
+				MarkerDistM, DistWarn));
+		GEngine->AddOnScreenDebugMessage(109, 2.f, FColor::Orange,
+			FString::Printf(TEXT("Marker pos (mundo): X=%.0f Y=%.0f Z=%.0f cm   escala=%.2f (diam=%.0fcm)"),
+				MarkerPos.X, MarkerPos.Y, MarkerPos.Z,
+				GazeMarker->GetComponentScale().X, GazeMarker->GetComponentScale().X * 100.f));
 	}
 #endif
 
