@@ -7,11 +7,11 @@ import json
 import os
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 
-from ..db import get_db
+from ..db import SessionLocal, get_db
 from ..models import Session
 from ..services.storage import storage
 from ..services.video import assemble_mp4
@@ -118,8 +118,14 @@ async def upload_frames(
 
 
 @router.post("/sessions/{sid}/complete")
-def complete_session(sid: str, db: DbSession = Depends(get_db)):
-    """Finaliza: monta o MP4 a partir dos frames no disco. Endpoint sync -> roda em threadpool."""
+def complete_session(sid: str, background: BackgroundTasks, db: DbSession = Depends(get_db)):
+    """Finaliza o upload e agenda a montagem do MP4 em BACKGROUND.
+
+    Responde rápido de propósito: numa sessão longa a montagem leva minutos, e segurar a
+    resposta estouraria o timeout do headset/proxy. O status vai a "processing" e vira
+    "complete" (ou "failed") quando a montagem termina. Idempotente: repetir o complete de
+    uma sessão pronta só devolve o estado; de uma travada em processing, re-agenda.
+    """
     sess = db.get(Session, sid)
     if sess is None:
         raise HTTPException(status_code=404, detail="sessão não encontrada")
@@ -132,28 +138,44 @@ def complete_session(sid: str, db: DbSession = Depends(get_db)):
         db.commit()
         raise HTTPException(status_code=409, detail="nenhum frame recebido — nada para montar")
 
-    w = sess.frame_width or 1024
-    h = sess.frame_height or 1024
-    out_path = storage.video_path(sid)
-    codec, written = assemble_mp4(storage.frames_dir(sid), sess.frames or [], w, h, sess.video_fps or 15.0, out_path)
+    if sess.status == "complete" and sess.video_path:
+        return {"id": sess.id, "status": sess.status, "frame_count": frame_count, "video_ready": True}
 
-    if codec is None or written == 0:
-        sess.status = "failed"
-        sess.error_detail = "falha ao montar o MP4 (codec indisponível ou frames ilegíveis)"
-        db.commit()
-        raise HTTPException(status_code=500, detail=sess.error_detail)
-
-    sess.video_path = out_path
-    sess.video_codec = codec
-    sess.status = "complete"
-    sess.completed_at = datetime.now(timezone.utc)
+    sess.status = "processing"
+    sess.error_detail = None
     db.commit()
-    db.refresh(sess)
-    return {
-        "id": sess.id,
-        "status": sess.status,
-        "frame_count": frame_count,
-        "frames_written": written,
-        "video_codec": codec,
-        "video_ready": True,
-    }
+    background.add_task(_assemble_and_finalize, sid)
+    return {"id": sess.id, "status": "processing", "frame_count": frame_count, "video_ready": False}
+
+
+def _assemble_and_finalize(sid: str) -> None:
+    """Roda fora do ciclo request/response; abre a própria sessão de banco."""
+    db = SessionLocal()
+    try:
+        sess = db.get(Session, sid)
+        if sess is None:
+            return
+        w = sess.frame_width or 1024
+        h = sess.frame_height or 1024
+        out_path = storage.video_path(sid)
+        codec, written = assemble_mp4(
+            storage.frames_dir(sid), sess.frames or [], w, h, sess.video_fps or 15.0, out_path)
+
+        if codec is None or written == 0:
+            sess.status = "failed"
+            sess.error_detail = "falha ao montar o MP4 (codec indisponível ou frames ilegíveis)"
+        else:
+            sess.video_path = out_path
+            sess.video_codec = codec
+            sess.status = "complete"
+            sess.completed_at = datetime.now(timezone.utc)
+        db.commit()
+    except Exception as e:  # nunca deixa a task matar o worker silenciosamente sem registrar
+        db.rollback()
+        sess = db.get(Session, sid)
+        if sess is not None:
+            sess.status = "failed"
+            sess.error_detail = f"erro na montagem do MP4: {e}"
+            db.commit()
+    finally:
+        db.close()

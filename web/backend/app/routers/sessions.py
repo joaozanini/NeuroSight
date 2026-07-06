@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as DbSession
 from ..config import settings
 from ..db import get_db
 from ..models import Session
+from ..security import require_api_key
 from ..services.storage import storage
 
 router = APIRouter()
@@ -76,7 +77,7 @@ def get_video(sid: str, db: DbSession = Depends(get_db)):
     return FileResponse(s.video_path, media_type="video/mp4", content_disposition_type="inline")
 
 
-@router.delete("/sessions/{sid}")
+@router.delete("/sessions/{sid}", dependencies=[Depends(require_api_key)])
 def delete_session(sid: str, db: DbSession = Depends(get_db)):
     s = db.get(Session, sid)
     if s is None:

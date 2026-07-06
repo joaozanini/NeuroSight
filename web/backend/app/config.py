@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     # Limite defensivo de frames por requisição multipart (o device manda em lotes).
     max_batch_frames: int = 50
 
+    # Chave exigida no header X-Api-Key dos endpoints de ESCRITA (ingestão e delete) quando
+    # definida. Vazia = tudo aberto (ok no dev local; NUNCA exponha na internet sem chave).
+    api_key: str = ""
+
+    # Pasta com o build do frontend (dist) para servir como SPA na raiz. Se não existir,
+    # a API roda sem site (modo dev, em que o Vite serve o front na 5173).
+    static_dir: str = "./static"
+
     api_prefix: str = "/api/v1"
 
 
