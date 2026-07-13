@@ -1,201 +1,142 @@
-# VR Eye Tracking — Meta Quest Pro (Unreal Engine 5.5)
+# QuestPro Eye-Tracking — App VR (Unreal Engine 5.5)
 
-App de **eye tracking** para Meta Quest Pro que:
+App standalone para **Meta Quest Pro** que registra **para onde a pessoa está olhando** dentro
+de um ambiente 3D: grava o vídeo da cena, amostra o olhar a ~72–90 Hz, e ao final da sessão
+**envia tudo automaticamente** para o [ambiente web companheiro](https://github.com/joaozanini/QuestPro-EyeTracking-Web),
+onde cada sessão pode ser assistida **com ou sem heatmap** do olhar.
 
-1. lê para onde o usuário está olhando e posiciona uma **bolinha vermelha** no ponto 3D;
-2. **grava o vídeo** do que se vê (captura feita pelo próprio app);
-3. exporta um **`gaze.json`** com a posição **2D (u,v)** do olhar relativa à gravação;
-4. gera, offline, um **heatmap sobreposto ao vídeo** (script Python);
-5. permite **validar** que o ponto 2D bate com a bolinha 3D e depois **desligar a bolinha**,
-   confiando só no JSON.
+> 🧪 Validado em campo (13/07/2026): marcador 3D no ponto olhado, coordenadas de mundo e
+> projeção 2D corretas, upload e heatmap funcionando de ponta a ponta.
 
-> **Por que gravar dentro do app?** O vídeo e o (u,v) saem da **mesma câmera de captura** →
-> alinhamento 2D↔vídeo exato e sincronização tempo↔frame automática. A bolinha cai
-> exatamente sob o ponto do heatmap por construção.
+## 🎬 Demonstração
 
----
+O ambiente web exibindo uma sessão gravada por este app (heatmap, validação e vídeo puro):
 
-## O que já está neste repositório
+![Demo do ambiente web](docs/demo-ambiente-web.gif)
 
-| Arquivo | O que é |
+🎥 [Vídeo completo da demonstração (1 min, MP4)](docs/demo-ambiente-web.mp4)
+
+## Como funciona
+
+```
+[Quest Pro — este app]                                [Servidor]                [Navegador]
+ OpenXR: raio do olhar (~72–90 Hz)                     API FastAPI               React
+ ├─ raycast → ponto 3D olhado                          ├─ banco de dados         ├─ lista de sessões
+ ├─ bolinha vermelha no ponto (validação, opcional)    ├─ monta o MP4            ├─ vídeo + heatmap
+ ├─ captura de vídeo da cena (30 fps, 1024²)           └─ mídia em disco         └─ modo validação
+ └─ botão B → envia JSON + frames ───── HTTP ────►
+```
+
+- **Alinhamento por construção:** o vídeo e a coordenada 2D `(u,v)` do olhar saem da **mesma
+  câmera virtual, no mesmo tick** — o ponto do heatmap cai exatamente sobre o pixel olhado,
+  sem calibração posterior.
+- **Movimento da cabeça 100% compensado:** o olhar é composto com a pose do headset; cada
+  amostra guarda o ponto **no mundo 3D** (absoluto) e **na tela** (u,v), para análises nos
+  dois referenciais.
+- A **bolinha vermelha** é um validador visual (o modo *Validate* do site desenha o (u,v)
+  gravado — os dois devem coincidir). Para sessões reais, desligue-a no Details
+  (`Show Marker`) sem afetar a gravação.
+
+## 🌐 Ambiente web (repositório irmão)
+
+O **[QuestPro-EyeTracking-Web](https://github.com/joaozanini/QuestPro-EyeTracking-Web)** é a
+outra metade do sistema — feito sob medida para receber as sessões deste app:
+
+- **Recebe** as sessões enviadas pelo botão B (upload em lotes com retomada) ou por script;
+- **Armazena** metadados/amostras em banco (SQLite dev / PostgreSQL) e monta o **MP4 (H.264)**;
+- **Visualiza** cada sessão com **heatmap em tempo real** (janela temporal, σ e opacidade
+  ajustáveis ao vivo), **modo validação** (crosshair sobre o vídeo) e tema claro/escuro;
+- Deploy documentado para servidor (Docker Compose): [`DEPLOY.md`](https://github.com/joaozanini/QuestPro-EyeTracking-Web/blob/main/DEPLOY.md).
+
+## Estrutura deste repositório
+
+| Caminho | O que é |
 |---|---|
-| `Source/EyeTrackingQuestPro/GazeRecorderActor.h/.cpp` | **Ator principal**: gaze → bolinha + projeção 2D + captura de frames + exportação do `gaze.json`. |
-| `tools/heatmap_overlay.py` | Ferramenta offline: gera o **heatmap** ou o vídeo de **validação** a partir da sessão. |
-| `tools/requirements.txt` | Dependências Python (`opencv-python`, `numpy`). |
-| `.gitignore` | Ignora `Binaries/`, `Intermediate/`, `Saved/`, etc. |
+| `Source/EyeTrackingQuestPro/GazeRecorderActor.{h,cpp}` | O ator central: gaze → raycast → marcador → projeção 2D → captura de frames → `gaze.json` → upload |
+| `Config/DefaultEngine.ini` | Configurações críticas (XR, Android, empacotamento) |
+| `tools/heatmap_overlay.py` | Ferramenta offline de heatmap/validação (alternativa ao site) |
+| `PASSO-A-PASSO.md` | Guia detalhado de setup do zero |
 
-O **shell do projeto Unreal** (template VR, `.uproject`, configurações de build) é criado no
-**editor** seguindo os passos abaixo — essa parte é GUI e precisa ser feita por você.
+## Setup (resumo)
 
----
+1. **Unreal Engine 5.5** + Visual Studio 2022 (workload *Game development with C++*).
+2. **Android:** NDK **25.1.8937393**, SDK 34, **JDK 17** (o `jbr` do Android Studio).
+   ⚠️ O editor usa a config **global** `%LOCALAPPDATA%\Unreal Engine\Engine\Config\UserEngine.ini` — confira lá se o empacotamento reclamar de NDK/JDK.
+3. **Plugin Meta XR compatível com a 5.5** (página de downloads da Meta — a versão do Fab pode ser mais nova que a engine).
+4. Plugins habilitados: `OpenXR`, `OpenXREyeTracker`, `AndroidPermission`, `OculusXR` (Meta XR — usado **só** para empacotar).
 
-## Pré-requisitos (uma vez)
+### ⚠️ Configurações que NÃO podem regredir
 
-1. **Unreal Engine 5.5** (Epic Games Launcher).
-2. **Visual Studio 2022** com o workload *Game development with C++*.
-3. **Toolchain Android para UE 5.5**: instale o Android Studio e rode
-   `Engine/Extras/Android/SetupAndroid.bat` (instala NDK/SDK/JDK nas versões esperadas).
-   Confira depois em *Project Settings → Platforms → Android SDK*.
-4. **Plugin Meta XR para UE 5.5**: baixe no [Fab](https://www.fab.com/listings/24fc0e7b-56d2-4421-a794-500fd51985c8)
-   ou na página de downloads da Meta e instale para a engine 5.5.
-5. **Python 3** no PC: `pip install -r tools/requirements.txt`.
+| Config | Valor | Por quê |
+|---|---|---|
+| `XrApi` | **`NativeOpenXR`** | O `GetGazeData` vem do caminho OpenXR da Epic. **Nunca rode o "Meta XR Setup Tool"** — ele reverte para OVRPlugin e o gaze morre. |
+| `bEyeTrackingEnabled` | **`True`** | Injeta a feature `oculus.software.eye_tracking` no manifesto; sem ela o runtime não liga o eye tracking (permissão sozinha não basta). |
+| `bPackageDataInsideApk` | **`True`** | Sem OBB separado; evita o erro "o app não está disponível" no sideload. |
 
-**No Quest Pro (essencial — sem isto o gaze volta zerado):**
-- Modo desenvolvedor ligado.
-- **Eye tracking calibrado**: *Configurações → Movement tracking → Eye tracking* (ativar + calibrar).
+Depois de mudar config Android/XR: **apague `Intermediate/Android`** antes de reempacotar
+(senão o manifesto antigo é reaproveitado) e **desinstale o APK antigo** antes de instalar.
 
----
+## Configuração do ator (Details do `GazeRecorderActor` na cena)
 
-## Passo a passo
+| Campo | Default | Função |
+|---|---|---|
+| `Upload Url` | `http://<ip>:8000/api/v1/sessions` | Rota **base** da API (o código anexa `/{id}/frames` e `/{id}/complete`). Vazio = só grava local. |
+| `Api Key` | — | Mesmo valor da `QUESTPRO_API_KEY` do servidor |
+| `Show Marker` | ✅ | Bolinha vermelha (desligue em sessões reais) |
+| `Marker Size` | 30 cm | Diâmetro da bolinha |
+| `Show Debug On Screen` | ✅ | HUD de diagnóstico (builds Development) |
+| `Video Fps` / `Frame Width/Height` | 30 / 1024² | Só o vídeo — o gaze é sempre por tick |
+| `Upload Batch Size` | 20 | Frames por requisição no upload |
 
-### 1. Criar o projeto (template VR, dentro deste repositório)
+## Rodar no óculos
 
-No Epic Games Launcher / UE 5.5: **Games → Virtual Reality**, C++ ou Blueprint (tanto faz —
-vamos adicionar C++ a seguir). **Nome: `EyeTrackingQuestPro`**, local: `C:\GitHub\VR-EyeTracking-QuestPro`.
+1. **Platforms → Android (ASTC) → Package Project** (⚠️ não use o Build do Visual Studio — ele não faz *cook* do conteúdo).
+2. `adb uninstall com.sinapsense.eyetrackingquestpro` → instale o APK novo (`Install_*.bat` ou `adb install -r`).
+3. No Quest Pro: **Settings → Movement Tracking → Eye Tracking LIGADO + calibrado** (o toggle do sistema é separado da permissão do app!). Rode **standalone** (via Link o gaze não funciona).
+4. Abra o app, aceite a permissão, olhe ao redor e aperte **B** — a sessão sobe e o app fecha.
 
-> O template VR já entrega o VRPawn com câmera que segue o HMD e o *tracking origin* correto —
-> isso é o que faz o gaze (espaço de mundo) cair no lugar certo. Os controles/teleporte do
-> template podem ser ignorados.
+### HUD de diagnóstico (canto da tela)
 
-### 2. Adicionar a classe C++ e colar o código deste repo
+| Linha | Diz |
+|---|---|
+| `Conectado / Permissao` | Estado do tracker e da permissão |
+| `Gaze valido / Conf / \|olho-cam\| / rej / reanc` | Validade, confiança (0/1), sanidade da origem e contadores de amostras descartadas/re-ancoradas |
+| `Ponto 3D (mundo)` | Onde o raio fixou (valores sãos = centenas de cm) |
+| `Marker: vis/mesh/mat/dist` | Estado da bolinha, com avisos automáticos |
 
-- No editor: **Tools → New C++ Class → AActor**, nome **`GazeRecorderActor`**. Deixe o editor
-  compilar (isso cria o módulo `Source/EyeTrackingQuestPro/`).
-- **Substitua** o conteúdo dos arquivos gerados pelos deste repositório:
-  `Source/EyeTrackingQuestPro/GazeRecorderActor.h` e `GazeRecorderActor.cpp`.
+## Dados gravados (por sessão)
 
-> Se você nomeou o projeto diferente de `EyeTrackingQuestPro`, troque o macro `EYETRACKINGQUESTPRO_API`
-> (no `.h`) pelo `SEUPROJETO_API` correspondente.
-
-### 3. Dependências do módulo — `Source/EyeTrackingQuestPro/EyeTrackingQuestPro.Build.cs`
-
-Ajuste as listas de dependências:
-
-```csharp
-PublicDependencyModuleNames.AddRange(new string[]
-{
-    "Core", "CoreUObject", "Engine", "InputCore",
-    "EyeTracker",          // UEyeTrackerFunctionLibrary, FEyeTrackerGazeData
-    "HeadMountedDisplay",  // POV do HMD via PlayerCameraManager
-    "RenderCore", "RHI",   // ReadPixels do render target
-    "ImageWrapper",        // encode JPEG dos frames
-    "Json"                 // exportação do gaze.json
-});
-
-// AndroidPermission só faz sentido no Android (o include está sob #if PLATFORM_ANDROID).
-if (Target.Platform == UnrealTargetPlatform.Android)
-{
-    PrivateDependencyModuleNames.Add("AndroidPermission");
-}
 ```
-
-### 4. Plugins — *Edit → Plugins*
-
-Habilite: **OpenXR**, **OpenXR Eye Tracker**, **Android Permission**, **Meta XR**.
-**Não** habilite o `Oculus VR` (descontinuado na UE 5.x). Reinicie o editor quando pedir.
-
-### 5. Gerar os arquivos do VS e compilar
-
-Feche o editor. Botão direito no `EyeTrackingQuestPro.uproject` → **Generate Visual Studio project files**.
-Abra o `.sln`, compile (`Development Editor`, `Win64`) e reabra o projeto.
-
-### 6. Material vermelho + colocar o ator no nível
-
-- Crie um material simples: **Shading Model = Unlit**, **Emissive Color = vermelho**
-  (assim a bolinha aparece forte em qualquer iluminação). Salve, ex.: `M_GazeMarker_Red`.
-- Arraste um **`GazeRecorderActor`** para o nível. No painel *Details*:
-  - **Marker Material** = `M_GazeMarker_Red`;
-  - confira `Capture Fov Deg` (82), `Frame Width/Height` (1024), `Video Fps` (15), `Show Marker` (true).
-
-### 7. Configurar para Quest standalone
-
-- *Project Settings → Plugins → Meta XR* → **Launch Meta XR Project Setup Tool** → aplique as
-  **recommended settings** de Android (Vulkan on, OpenGL ES off, arm64, package name, SDKs,
-  forward shading + MSAA).
-- **XR API = Epic Native OpenXR** (obrigatório — o backend *Meta XR with OVRPlugin* NÃO ativa o
-  OpenXR Eye Tracker, e o `GetGazeData` voltaria vazio).
-- Permissão de eye tracking em `Config/DefaultEngine.ini`:
-  ```ini
-  [/Script/AndroidRuntimeSettings.AndroidRuntimeSettings]
-  +ExtraPermissions=com.oculus.permission.EYE_TRACKING
-  ```
-
-### 8. Empacotar e instalar
-
-- *Platforms → Android → Package Project* (gera o APK), ou use o deploy rápido do Meta XR.
-- Instale no headset: `adb install -r caminho/para/o.apk`.
-- Abra o app no Quest Pro e **conceda a permissão** de eye tracking quando perguntado.
-
-### 9. Rodar uma sessão e puxar os dados
-
-1. Com a **bolinha ligada**, olhe em volta por alguns segundos.
-2. **Feche o app** (o `EndPlay` grava o `gaze.json`).
-3. O caminho exato da sessão é logado no boot (procure por `[GazeRecorder] Sessão em:` no
-   `adb logcat`). Em geral:
-   ```
-   adb pull /sdcard/Android/data/com.SEU_PACOTE/files/UnrealGame/EyeTrackingQuestPro/EyeTrackingQuestPro/Saved/GazeSessions/<id> ./session
-   ```
-   A pasta `./session` terá `gaze.json` e `frames/`.
-
-### 10. Validar e gerar o heatmap (no PC)
-
-```bash
-pip install -r tools/requirements.txt
-
-# Validação: o marcador verde deve cair EM CIMA da bolinha vermelha em todos os frames.
-python tools/heatmap_overlay.py ./session --mode validate
-
-# Heatmap sobreposto ao vídeo.
-python tools/heatmap_overlay.py ./session --mode heatmap --out heatmap.mp4
-
-# (opcional) heatmap agregado da sessão inteira como PNG.
-python tools/heatmap_overlay.py ./session --static-heatmap aggregate.png
+Saved/GazeSessions/<YYYY-MM-DD_HH-MM-SS>/
+├── gaze.json      meta + frames[] + samples[]
+└── frames/000001.jpg ...
 ```
-
-### 11. Confiar no JSON e desligar a bolinha
-
-Validado o casamento 2D↔3D, é só desligar a bolinha (não atrapalha mais a experiência) — o
-log e a gravação continuam normalmente:
-- no *Details* do ator: **Show Marker = false**, ou
-- em runtime/Blueprint: `SetMarkerVisible(false)`.
-
----
-
-## Formato do `gaze.json`
 
 ```json
-{
-  "meta":   { "captureFovDeg": 82.0, "frameWidth": 1024, "frameHeight": 1024,
-              "videoFps": 15.0, "uvOrigin": "top-left" },
-  "frames": [ { "idx": 1, "t": 0.000, "file": "frames/000001.jpg" } ],
-  "samples":[ { "t": 0.000, "valid": true, "world": [x,y,z],
-                "uv": [0.512, 0.488], "confidence": 0.94 } ]
-}
+{ "meta":    { "captureFovDeg": 82, "frameWidth": 1024, "frameHeight": 1024,
+               "videoFps": 30, "uvOrigin": "top-left" },
+  "frames":  [ { "idx": 1, "t": 0.027, "file": "frames/000001.jpg" } ],
+  "samples": [ { "t": 0.027, "valid": true, "world": [x,y,z],
+                 "uv": [0.512, 0.488], "confidence": 1.0 } ] }
 ```
-- `uv` é normalizado em `[0,1]`, origem no canto superior-esquerdo → pixel = `(u·W, v·H)`.
-- `valid=false` em piscadas; nesses frames a bolinha some e o `uv` vem `[-1,-1]`.
 
----
+O JSON tem *flush* periódico (~5 s): mesmo que o app seja morto, a sessão sobrevive.
+Sem rede no momento? Puxe depois com `adb pull` e envie com o
+[`replay_session.py`](https://github.com/joaozanini/QuestPro-EyeTracking-Web/blob/main/scripts/replay_session.py) do repo web.
 
-## Solução de problemas
+## Heatmap offline (sem o site)
 
-| Sintoma | Causa provável |
+```bash
+py tools/heatmap_overlay.py <pasta-da-sessao> --mode heatmap   # MP4 com heatmap
+py tools/heatmap_overlay.py <pasta-da-sessao> --mode validate  # crosshair vs bolinha
+```
+
+## Solução de problemas (dores reais deste projeto)
+
+| Sintoma | Causa/Fix |
 |---|---|
-| Gaze sempre inválido / bolinha não aparece | Permissão de eye tracking não concedida; eye tracking não calibrado no device; **XR API** não está em *Epic Native OpenXR*. Cheque `IsEyeTrackerConnected()` e o `adb logcat`. |
-| Bolinha aparece cinza, não vermelha | O fallback dinâmico não achou o parâmetro de cor — atribua um material **Unlit vermelho** em `Marker Material`. |
-| `frames` vazio no JSON | `Video Fps` = 0, ou a sessão foi fechada cedo demais. |
-| App engasga ao gravar | Custo do SceneCapture + readback. Reduza `Video Fps` (ex.: 10), `Frame Width/Height` (ex.: 768). É um modo de pesquisa, não de produto final. |
-| O nó/função de eye tracking some na UE 5.6.0 | Bug conhecido — corrigido na **5.6.1**. (Aqui usamos 5.5.) |
-
----
-
-## Notas técnicas
-
-- `UEyeTrackerFunctionLibrary::GetGazeData` devolve `GazeOrigin`/`GazeDirection` em **espaço de
-  mundo**; por isso usamos o VRPawn do template VR (tracking origin correto).
-- Eye tracking existe **só no Quest Pro** (Quest 2/3/3S não têm o hardware).
-- **"MP4 direto do headset"**: o padrão grava `frames + json` e o Python monta o vídeo. Para um
-  MP4 já pronto saindo do device, o upgrade é um encoder nativo (MediaCodec via JNI/UPL) ou um
-  plugin pago (ex.: Runtime Video Recorder).
-- **Fallback de gaze**: se o caminho OpenXR teimar em voltar zerado no firmware do device, a
-  alternativa é o Meta Movement SDK (backend OVRPlugin) — mais trabalhoso, porém "oficial" da Meta.
+| "O app não está disponível" | APK sem cook (Build do VS) ou OBB ausente → **Package Project** + `bPackageDataInsideApk=True` |
+| Gaze sempre inválido | Eye tracking desligado/não calibrado nas Settings; rodando via Link; ou manifesto sem a feature (reempacote limpo com `bEyeTrackingEnabled=True`) |
+| Coordenadas ~100× grandes / bolinha sumida | Bug de escala do Native OpenXR no Quest — **já tratado no código** (origem re-ancorada na câmera; ver contador `reanc` no HUD) |
+| Cena inteira verde-água | Dados de iluminação corrompidos no cook → **Build Lighting Only** + Reflection Captures no editor, salvar e reempacotar |
+| Erro de NDK/JDK ao empacotar | Config global `UserEngine.ini` (ver Setup) |
