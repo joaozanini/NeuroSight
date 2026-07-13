@@ -203,6 +203,14 @@ private:
 	int32 NextFrameCursor = 0;
 	int32 InFlightBatches = 0;
 
+	/** Amostras que o tracker retornou mas foram descartadas (Confidence 0 / direção nula).
+	 *  Sobe rápido = tracker devolvendo pose congelada (ver comentário no Tick). */
+	int32 RejectedSampleCount = 0;
+
+	/** Amostras válidas cuja ORIGEM veio implausível (bug de escala ~100x do Native OpenXR no
+	 *  Quest) e foi re-ancorada na câmera. No device espera-se ~100% enquanto o bug existir. */
+	int32 ReanchoredSampleCount = 0;
+
 	FString SessionDir;
 	const FString FramesSubdir = TEXT("frames");
 	double StartTimeSeconds = 0.0;

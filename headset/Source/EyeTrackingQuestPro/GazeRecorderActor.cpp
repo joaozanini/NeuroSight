@@ -471,12 +471,39 @@ void AGazeRecorderActor::Tick(float DeltaSeconds)
 	}
 #endif
 
-	// Exige direcao de olhar nao-degenerada: no caminho OpenXR, GetGazeData pode retornar true
-	// com direcao ~zero quando o tracker ainda nao tem dado valido (sem calibracao/foco).
+	// Coerencia com o que o plugin OpenXR retorna (OpenXREyeTracker.cpp:187-242): quando o
+	// tracker perde o olho (isActive=false), o plugin NAO limpa a pose antiga — so os bits
+	// TRACKED. GetGazeData continua retornando true com a POSE CONGELADA (em espaco de
+	// tracking do momento da perda) composta com o TrackingToWorld ATUAL, e Confidence=0.
+	// Esse ponto fantasma "anda" junto com teleports -> coordenadas de mundo sem sentido.
+	// Portanto a amostra so e valida se:
+	//   (a) totalmente rastreada  -> Confidence >= 0.5 (no caminho OpenXR e binaria 0/1);
+	//   (b) direcao nao-degenerada.
+	// Origem implausivel NAO invalida: e re-ancorada na camera (ver bloco abaixo).
 	FEyeTrackerGazeData Gaze;
-	if (bPermissionReady && UEyeTrackerFunctionLibrary::GetGazeData(Gaze) && !Gaze.GazeDirection.IsNearlyZero())
+	const bool bGazeRead = bPermissionReady && UEyeTrackerFunctionLibrary::GetGazeData(Gaze);
+	const float OriginOffsetCm = bGazeRead ? static_cast<float>(FVector::Dist(Gaze.GazeOrigin, CamLoc)) : -1.f;
+	const bool bGazeUsable = bGazeRead
+		&& Gaze.ConfidenceValue >= 0.5f
+		&& !Gaze.GazeDirection.IsNearlyZero();
+	if (bGazeRead && !bGazeUsable)
 	{
-		const FVector Start = Gaze.GazeOrigin;
+		++RejectedSampleCount;  // dado veio do tracker mas foi descartado (diagnostico no HUD)
+	}
+	if (bGazeUsable)
+	{
+		// BUG DE ESCALA (confirmado nos dados do device, sessoes 02/07 e 10/07): no caminho
+		// Native OpenXR do Quest standalone o GazeOrigin chega ~100x longe demais (conversao
+		// m->cm aplicada em dobro; ex.: Z~10000 = "100 m de altura"). A DIRECAO nao e afetada
+		// (e normalizada abaixo). Quando a origem e implausivel (olho a >1 m da camera),
+		// re-ancoramos o raio NA CAMERA — que e onde os olhos realmente estao (diferenca
+		// fisica de poucos cm) — em vez de descartar a amostra.
+		FVector Start = Gaze.GazeOrigin;
+		if (OriginOffsetCm < 0.f || OriginOffsetCm > 100.f)
+		{
+			Start = CamLoc;
+			++ReanchoredSampleCount;
+		}
 		const FVector Dir = Gaze.GazeDirection.GetSafeNormal();
 		const FVector End = Start + Dir * MaxTraceDistance;
 
@@ -516,7 +543,8 @@ void AGazeRecorderActor::Tick(float DeltaSeconds)
 				bConn ? TEXT("SIM") : TEXT("NAO"),
 				bPermissionReady ? TEXT("OK") : TEXT("aguardando")));
 		GEngine->AddOnScreenDebugMessage(102, 2.f, S.bValid ? FColor::Green : FColor::Red,
-			FString::Printf(TEXT("Gaze valido: %s   Confidence: %.2f"), S.bValid ? TEXT("SIM") : TEXT("NAO"), S.Confidence));
+			FString::Printf(TEXT("Gaze valido: %s   Conf: %.2f   |olho-cam|: %.0fcm   rej: %d   reanc: %d"),
+				S.bValid ? TEXT("SIM") : TEXT("NAO"), Gaze.ConfidenceValue, OriginOffsetCm, RejectedSampleCount, ReanchoredSampleCount));
 		GEngine->AddOnScreenDebugMessage(103, 2.f, FColor::White,
 			FString::Printf(TEXT("GazeOrigin: %s"), *Gaze.GazeOrigin.ToString()));
 		GEngine->AddOnScreenDebugMessage(104, 2.f, FColor::White,
