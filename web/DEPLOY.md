@@ -60,6 +60,11 @@ docker compose ps                # os 2 serviços "running/healthy"
 docker compose logs -f app       # logs da API (Ctrl+C pra sair)
 ```
 
+Ao subir, a API aplica as migrações do banco (Alembic). Na primeira subida de uma versão com
+Alembic, o banco que já existia é reconhecido e carimbado na baseline, sem recriar nada (o log
+mostra `banco anterior ao Alembic: carimbando a baseline 0001_baseline`). Para conferir a versão
+do banco: `docker compose exec app alembic current`.
+
 ## 5. Testar (nesta ordem — cada passo isola uma camada)
 
 ```bash
@@ -70,7 +75,7 @@ curl http://localhost:8000/healthz          # -> {"ok":true}
 curl http://IP-DA-VM:8000/healthz
 
 # 5.3 do seu CELULAR NO 4G, no navegador (testa exposição à internet — o teste que importa!):
-#     http://IP-DA-VM:8000  -> deve abrir o site "QuestPro Eye-Tracking"
+#     http://IP-DA-VM:8000  -> deve abrir o site "NeuroSight"
 ```
 Se 5.1 funciona e 5.3 não → é firewall da faculdade (volte ao passo 0.4).
 

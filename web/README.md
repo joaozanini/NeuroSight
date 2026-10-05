@@ -1,4 +1,8 @@
-# QuestPro Eye-Tracking — Ambiente Web
+# NeuroSight — Ambiente Web
+
+> **Em reconstrução** seguindo o [plano de implementação](../docs/PLANO-IMPLEMENTACAO.md): a
+> interface antiga (lista de sessões e viewer) saiu na Fase 0 e as telas novas entram fase a fase.
+> A ingestão do óculos descrita abaixo continua funcionando igual.
 
 Plataforma web + API feita sob medida para o app
 **[do headset](../headset/)** (Unreal Engine 5.5,
@@ -38,19 +42,44 @@ origem top-left) é definido pelo app — veja o
 
 ## Rodar em desenvolvimento (sem instalar banco)
 
-Requer Python 3.12 e Node 18+.
+Requer Python 3.12+ e Node 20+.
 
 ```bash
-# API (SQLite + mídia local, sem chave)
+# API (SQLite + mídia local, sem chave). Ao subir, aplica as migrações do banco.
 cd backend
 py -3.12 -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\pip install -r requirements-dev.txt
 .venv\Scripts\uvicorn app.main:app --reload --port 8000
 
 # Site (noutro terminal)
 cd frontend
 npm install
-npm run dev        # http://localhost:5173 (proxy /api -> :8000)
+npm run dev        # http://localhost:5173 (proxy /api -> :8000, inclusive WebSocket)
+```
+
+No Linux e no macOS os executáveis do venv ficam em `.venv/bin/`.
+
+### Testes e verificação
+
+```bash
+cd backend && .venv\Scripts\pytest                          # API, com SQLite temporário
+cd frontend && npm run typecheck && npm test && npm run build
+```
+
+Os testes de migração também rodam num PostgreSQL descartável quando
+`NEUROSIGHT_TEST_PG_URL` aponta para ele. Com o `npm run dev` no ar,
+`http://localhost:5173/dev/componentes` mostra a vitrine dos componentes de base (só no modo dev).
+
+### Banco e migrações
+
+O esquema é do Alembic (`backend/app/migrations`), e a API aplica as migrações pendentes ao
+subir. Um banco criado antes do Alembic é reconhecido e carimbado na baseline (`0001_baseline`),
+sem recriar nada. Pela linha de comando, em `backend/`:
+
+```bash
+alembic upgrade head                            # aplica as migrações
+alembic stamp 0001_baseline                     # marca um banco antigo como já estando na baseline
+alembic revision --autogenerate -m "descrição"  # nova migração a partir dos modelos
 ```
 
 ### Testar sem o óculos
