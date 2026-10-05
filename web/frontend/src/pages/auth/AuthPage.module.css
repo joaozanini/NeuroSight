@@ -1,0 +1,62 @@
+/* Telas de acesso (W01–W03): título, texto de apoio e formulário na coluna da esquerda. */
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+.back {
+  align-self: flex-start;
+  margin-bottom: 24px;
+}
+
+.icon {
+  margin-bottom: 28px;
+  color: var(--color-primary);
+}
+
+.title {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 40px;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 12px 0 32px;
+  font-size: var(--font-size-lg);
+  line-height: 28px;
+  color: var(--color-text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.forgot {
+  align-self: flex-end;
+  margin-top: -4px;
+  font-size: var(--font-size-control);
+}
+
+.submit {
+  margin-top: 8px;
+}
+
+.submitAfterLink {
+  margin-top: 20px;
+}
+
+.footer {
+  margin-top: 32px;
+  font-size: var(--font-size-md);
+  line-height: 24px;
+  color: var(--color-text-muted);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}

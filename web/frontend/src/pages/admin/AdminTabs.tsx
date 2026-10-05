@@ -1,17 +1,9 @@
-import { ShieldCheck, UsersRound } from 'lucide-react'
-import AuditIcon from '../../components/icons/AuditIcon'
+import { useCurrentUser } from '../../api/auth'
 import Tabs from '../../components/Tabs/Tabs'
+import { allowedAdminTabs } from './adminTabs'
 
-// Abas da Administração (W19, W21, W22); cada aba é uma rota.
+// Abas da Administração; cada aba é uma rota e só aparece para quem tem a permissão dela.
 export default function AdminTabs() {
-  return (
-    <Tabs
-      ariaLabel="Administração"
-      items={[
-        { label: 'Usuários', icon: UsersRound, to: '/admin/usuarios' },
-        { label: 'Perfis e permissões', icon: ShieldCheck, to: '/admin/permissoes' },
-        { label: 'Auditoria', icon: AuditIcon, to: '/admin/auditoria' },
-      ]}
-    />
-  )
+  const me = useCurrentUser()
+  return <Tabs ariaLabel="Administração" items={allowedAdminTabs(me).map(({ label, icon, to }) => ({ label, icon, to }))} />
 }

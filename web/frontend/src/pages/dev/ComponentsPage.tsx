@@ -11,6 +11,7 @@ import {
   DangerZone,
   Dropzone,
   FileField,
+  FormAlert,
   LinkButton,
   Modal,
   PageHeader,
@@ -324,6 +325,7 @@ export default function ComponentsPage() {
             Aviso de erro
           </Button>
         </div>
+        <FormAlert>E-mail ou senha incorretos.</FormAlert>
         <Modal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
