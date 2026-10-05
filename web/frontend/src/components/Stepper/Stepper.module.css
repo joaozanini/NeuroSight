@@ -1,0 +1,77 @@
+.stepper {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 12px;
+  min-width: 0;
+}
+
+.step:last-child {
+  flex: none;
+}
+
+/* Linha até a próxima etapa: azul depois de uma etapa concluída. */
+.step:not(:last-child)::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  margin: 0 20px 0 24px;
+  border-radius: 1px;
+  background: var(--color-border-strong);
+}
+
+.done:not(:last-child)::after {
+  background: var(--color-primary);
+}
+
+.marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.done .marker,
+.current .marker {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.current .marker {
+  box-shadow: 0 0 0 4px var(--color-primary-ring);
+}
+
+.pending .marker {
+  border: 1px solid var(--color-border-control);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.label {
+  font-size: var(--font-size-control);
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.done .label,
+.current .label {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pending .label {
+  color: var(--color-text-muted);
+}

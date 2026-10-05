@@ -1,0 +1,157 @@
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--sidebar-width);
+  height: 100vh;
+  padding: 32px 16px 23px;
+  overflow-y: auto;
+  background: var(--color-surface);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-start;
+  margin-left: 10px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Borda esquerda transparente em todos para o texto não pular no item ativo. */
+.item,
+.logout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 46px;
+  padding: 0 14px 0 13px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  font-size: var(--font-size-md);
+  text-decoration: none;
+}
+
+.item {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.item svg {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.item:hover {
+  background: var(--color-bg);
+}
+
+.active,
+.active:hover {
+  border-left-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.active svg {
+  color: var(--color-primary);
+}
+
+.itemLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-attention);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Divisória a 16 px do bloco do usuário, como nas telas W05 e W06. */
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 58px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.user:hover {
+  background: var(--color-bg);
+}
+
+.userActive,
+.userActive:hover {
+  background: var(--color-primary-soft);
+}
+
+.userText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.userName {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userRole {
+  font-size: var(--font-size-xs);
+  line-height: 18px;
+  color: var(--color-text-muted);
+}
+
+.logout {
+  color: var(--color-danger-strong);
+  font-weight: var(--font-weight-medium);
+}
+
+.logout:hover {
+  background: var(--color-danger-soft);
+}

@@ -1,0 +1,38 @@
+.link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--color-primary-hover);
+}
+
+.danger {
+  color: var(--color-danger);
+}
+
+.danger:hover {
+  color: var(--color-danger);
+}
+
+.plain {
+  text-decoration: none;
+}
+
+.plain:hover {
+  text-decoration: underline;
+}
+
+button.link:disabled {
+  color: var(--color-text-disabled);
+  text-decoration: none;
+}

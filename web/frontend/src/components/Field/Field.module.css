@@ -1,0 +1,114 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.label {
+  margin-bottom: 8px;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+  color: var(--color-text);
+}
+
+.hint,
+.error {
+  margin-top: 8px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+}
+
+.hint {
+  color: var(--color-text-muted);
+}
+
+.error {
+  color: var(--color-danger);
+}
+
+/* Caixa dos campos de texto, select e área de texto. */
+.control {
+  width: 100%;
+  height: var(--control-height-lg);
+  padding: 0 16px;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-control);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.control::placeholder {
+  color: var(--color-text-placeholder);
+  opacity: 1;
+}
+
+.control:hover:not(:disabled) {
+  border-color: #6f7894;
+}
+
+.control:focus,
+.control:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.control[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.control[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.18);
+}
+
+.control:disabled {
+  border-color: var(--color-border-disabled);
+  background: var(--color-bg);
+  color: var(--color-text-disabled);
+}
+
+.md {
+  height: var(--control-height-md);
+}
+
+.sm {
+  height: var(--control-height-sm);
+}
+
+/* Ícone à esquerda (busca) e botão à direita (mostrar senha). */
+.adorned {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.leading,
+.trailing {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  color: var(--color-text-muted);
+}
+
+.leading {
+  left: 16px;
+  pointer-events: none;
+}
+
+.trailing {
+  right: 8px;
+}
+
+.withLeading {
+  padding-left: 48px;
+}
+
+.withTrailing {
+  padding-right: 52px;
+}

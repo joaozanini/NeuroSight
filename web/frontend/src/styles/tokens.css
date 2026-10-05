@@ -1,0 +1,91 @@
+/*
+ * Tokens do tema claro, medidos nos protótipos de web/docs/pages (desenhados a 1440 px).
+ * Os componentes usam só estas variáveis; cor ou medida nova entra aqui primeiro.
+ */
+:root {
+  color-scheme: light;
+
+  /* Marca e ações */
+  --color-primary: #3b5bf0;
+  --color-primary-hover: #2f4ee3;
+  --color-primary-pressed: #2843cc;
+  --color-primary-strong: #2d49d6; /* texto sobre fundo azul claro (selos) */
+  --color-primary-soft: #eef2fe; /* item ativo do menu, opção selecionada */
+  --color-primary-tint: #eaf0ff; /* avatar, selo "Em andamento" */
+  --color-primary-ring: #dde5ff; /* halo da etapa atual */
+
+  /* Texto */
+  --color-text: #1a2446;
+  --color-text-muted: #5e6886;
+  --color-text-placeholder: #667085;
+  --color-text-disabled: #98a2b3;
+  --color-text-inverse: #ffffff;
+
+  /* Superfícies e bordas */
+  --color-bg: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f7f8fc; /* cabeçalho das tabelas */
+  --color-border: #eef0f5; /* cartões e divisórias */
+  --color-border-strong: #e6e9f0; /* abas, opções e linhas de arquivo */
+  --color-border-control: #8a93ab; /* campos */
+  --color-border-disabled: #e4e7ec;
+  --color-fill-neutral: #eef0f5; /* etiquetas, controle segmentado */
+  --color-fill-neutral-strong: #eff2f8; /* selo "Inativo" */
+
+  /* Estados */
+  --color-success: #067647;
+  --color-success-soft: #e7f8ef;
+  --color-warning: #b54708;
+  --color-warning-soft: #fff4eb;
+  --color-danger: #b42318;
+  --color-danger-strong: #d92d20; /* "Sair", "Interromper sessão" */
+  --color-danger-soft: #fef3f2;
+  --color-danger-tint: #fef0ee; /* selo "Interrompida" */
+  --color-danger-border: #fda29b;
+  --color-attention: #c4450c; /* contador de sessões no menu */
+  --color-chart-orange: #f97316;
+  --color-overlay: rgba(28, 39, 71, 0.56);
+
+  /* Tipografia: Inter sem tamanho óptico (eixo opsz fixo no corte de texto), como nos protótipos;
+     títulos grandes compensam com espaçamento negativo. */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 13px;
+  --font-size-sm: 14px;
+  --font-size-hint: 15px;
+  --font-size-md: 16px;
+  --font-size-control: 17px; /* campos e botões */
+  --font-size-lg: 18px; /* subtítulos */
+  --font-size-xl: 20px; /* títulos de seção */
+  --font-size-2xl: 22px; /* título de modal */
+  --font-size-3xl: 32px; /* título de página */
+  --font-size-display: 64px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Raios */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 28px;
+  --radius-full: 999px;
+
+  /* Sombras */
+  --shadow-card: 0 1px 2px rgba(26, 36, 70, 0.04), 0 4px 14px rgba(26, 36, 70, 0.05);
+  --shadow-raised: 0 1px 2px rgba(26, 36, 70, 0.1);
+  --shadow-overlay: 0 24px 64px rgba(26, 36, 70, 0.24);
+  --focus-ring: 0 0 0 3px rgba(59, 91, 240, 0.3);
+
+  /* Alturas dos controles */
+  --control-height-lg: 52px; /* campos de formulário, botão do login */
+  --control-height-md: 48px; /* botões, busca e filtros */
+  --control-height-sm: 44px; /* ações dentro de cartões e modais, paginação */
+
+  /* Layout */
+  --sidebar-width: 264px;
+  --page-padding-top: 40px;
+  --page-padding-x: 48px;
+  --page-padding-bottom: 64px;
+}

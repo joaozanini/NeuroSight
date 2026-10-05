@@ -1,0 +1,20 @@
+.spinner {
+  display: inline-flex;
+  color: currentColor;
+}
+
+.spinner svg {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner svg {
+    animation-duration: 2.4s;
+  }
+}

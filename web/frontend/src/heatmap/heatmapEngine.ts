@@ -5,7 +5,7 @@
 // Normaliza pelo pico, aplica JET e gera RGBA com alpha onde norm > 0.02 (transparente no resto,
 // porque o vídeo aparece por baixo). Tudo em "quarter-res" por performance e depois é escalado.
 
-import type { GazeSample } from '../api/client'
+import type { GazeSample } from './types'
 import { JET_LUT } from './jetColormap'
 
 export function renderHeatmapImageData(

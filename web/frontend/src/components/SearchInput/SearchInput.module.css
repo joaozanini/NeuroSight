@@ -1,0 +1,5 @@
+/* Sem o "x" nativo do type=search, que não existe nos protótipos. */
+.search::-webkit-search-cancel-button,
+.search::-webkit-search-decoration {
+  appearance: none;
+}

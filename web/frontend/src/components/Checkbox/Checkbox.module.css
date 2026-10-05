@@ -1,0 +1,45 @@
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.input {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  cursor: pointer;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: var(--font-size-md);
+  line-height: 24px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+.input:disabled + .text .label {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.description {
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
