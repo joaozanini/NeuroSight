@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import type { GazeFrame, GazeSample } from '../api/client'
+import type { GazeFrame, GazeSample } from './types'
 import { renderHeatmapImageData } from './heatmapEngine'
+import styles from './HeatmapOverlay.module.css'
 
 export type ViewerMode = 'off' | 'heatmap' | 'validate'
 
@@ -93,9 +94,9 @@ export default function HeatmapOverlay(props: Props) {
   }, [render])
 
   return (
-    <div className="viewer" style={{ aspectRatio: `${frameWidth} / ${frameHeight}` }}>
+    <div className={styles.viewer} style={{ aspectRatio: `${frameWidth} / ${frameHeight}` }}>
       <video ref={videoRef} src={videoUrl} controls playsInline />
-      <canvas ref={canvasRef} width={frameWidth} height={frameHeight} className="overlay" />
+      <canvas ref={canvasRef} width={frameWidth} height={frameHeight} className={styles.overlay} />
     </div>
   )
 }

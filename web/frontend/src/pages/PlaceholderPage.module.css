@@ -1,0 +1,62 @@
+.withTabs {
+  margin-bottom: 20px;
+}
+
+.bodyAfterTabs {
+  margin-top: 28px;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 24px;
+  border: 1px dashed var(--color-border-control);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-primary);
+}
+
+.noticeTitle {
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+}
+
+.noticeText {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  line-height: 24px;
+}
+
+.fullscreen {
+  padding: 32px 48px;
+}
+
+.auth {
+  display: flex;
+  flex-direction: column;
+}
+
+.authBack {
+  align-self: flex-start;
+  margin-bottom: 24px;
+}
+
+.authTitle {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 40px;
+  letter-spacing: -0.02em;
+}
+
+.authSubtitle {
+  margin: 12px 0 32px;
+  font-size: var(--font-size-lg);
+  line-height: 28px;
+  color: var(--color-text-muted);
+}

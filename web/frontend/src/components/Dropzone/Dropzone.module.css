@@ -1,0 +1,110 @@
+/* Área de arrastar e soltar (W10). */
+.zone {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 32px 20px 32px;
+  border: 1px dashed var(--color-border-control);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.dragging {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.disabled {
+  opacity: 0.6;
+}
+
+.icon {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--font-size-control);
+  font-weight: var(--font-weight-semibold);
+  line-height: 26px;
+}
+
+.description {
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+/* Anexo em linha (W07). */
+.fileFieldWrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fileLabel {
+  margin-bottom: 8px;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+}
+
+.fileField {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--control-height-lg);
+  padding: 0 3px 0 16px;
+  border: 1px dashed var(--color-border-control);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.attached {
+  border-style: solid;
+}
+
+.invalid {
+  border-color: var(--color-danger);
+}
+
+.fileIcon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.fileName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--font-size-control);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--color-text-muted);
+}
+
+.fileHint,
+.fileError {
+  margin-top: 8px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+}
+
+.fileHint {
+  color: var(--color-text-muted);
+}
+
+.fileError {
+  color: var(--color-danger);
+}

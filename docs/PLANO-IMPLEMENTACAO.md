@@ -8,7 +8,7 @@
 
 | Fase | Situação | Branch / commit | Observações |
 |---|---|---|---|
-| 0 Base técnica | não iniciada | | |
+| 0 Base técnica | concluída | `fase-0-base-tecnica` (`690ed32` backend, `d9269a4` frontend) | Ver as notas da Fase 0 abaixo. |
 | 1 Contas, permissões e auditoria | não iniciada | | |
 | 2 Pacientes e estímulos | não iniciada | | |
 | 3 Configuração de sessões | não iniciada | | |
@@ -18,6 +18,28 @@
 | 7 App do óculos (UE 5.5) | não iniciada | | |
 | 8 Deploy e documentação | não iniciada | | |
 
+### Notas da Fase 0 (para as próximas sessões)
+- **Testes**: em `web/backend`, `pip install -r requirements-dev.txt` e `pytest` (SQLite temporário;
+  com `NEUROSIGHT_TEST_PG_URL` os testes de migração também rodam num PostgreSQL). Em
+  `web/frontend`, `npm run typecheck`, `npm test` e `npm run build` (o build roda o typecheck).
+- **Migrações**: `web/backend/app/migrations`. A API chama `app.db.migrate()` ao subir. Tabela
+  nova = modelo em `app/models/<domínio>.py` + `alembic revision --autogenerate -m "..."` (revisar
+  o script). A convenção de nomes de índices e constraints está em `app/models/base.py`.
+- **Rotas do site** (em português) ficam em `src/routes.ts` como placeholders. Ao implementar uma
+  tela, troque o placeholder pela página no `App.tsx` e tire a entrada de `routes.ts`.
+- **Menu**: `layouts/Sidebar.tsx` recebe `user`, `showAdmin`, `sessionsBadge` e `onLogout`. Hoje o
+  `AppLayout` passa só `showAdmin`; a Fase 1 liga o login e a permissão, e a Fase 6 o selo.
+- **Contratos já fixados no front**: valores de status em `src/lib/status.ts` (`configured`,
+  `running`, `awaiting_data`, `completed`, `interrupted`; `active`, `invited`, `inactive`) e regras
+  de senha em `src/lib/password.ts`, que o backend da Fase 1 precisa repetir.
+- **Cliente da API**: `api.get/post/put/patch/delete` e `ApiError` (`status`, `message`, `detail`
+  com os campos do 422) em `src/api/client.ts`; use `redirectOnUnauthorized: false` no login.
+  Upload com progresso: `uploadFile()` em `src/api/upload.ts`. Datas e números em pt-BR:
+  `src/lib/format.ts`.
+- **Componentes**: exportados em `src/components/index.ts`; a vitrine `/dev/componentes` (só no
+  `npm run dev`) mostra todos com os textos dos protótipos.
+- As rotas antigas de leitura (`GET`/`DELETE /api/v1/sessions`) continuam, sem tela.
+
 ### Decisões em aberto
 - **Fluxo antigo (cena 3D)**: a suposição é que ele é substituído e que a tabela `sessions`
   atual vira `legacy_sessions`, só leitura e sem tela. Se os dados antigos puderem ser
@@ -26,6 +48,38 @@
 
 ### Registro de desvios
 _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê._
+
+- **Fase 0, migrações automáticas**: além da baseline para o `alembic stamp`, a API aplica as
+  migrações ao subir e carimba sozinha um banco anterior ao Alembic (o comando manual continua
+  valendo). No PostgreSQL um advisory lock serializa os workers, porque o Docker ainda sobe com 2.
+  Testado num banco criado pelo código antigo, com a imagem Docker: dados preservados.
+- **Fase 0, convenção de nomes** de índices, unique, check e FK no `Base.metadata`, para o Alembic
+  conseguir alterar constraints depois (inclusive no SQLite). A PK ficou de fora para a baseline
+  sair idêntica ao banco do servidor (`sessions_pkey`, conferido com `pg_dump`).
+- **Fase 0, path traversal**: além de `//etc/passwd`, `..%2f` e `%2e%2e` também vazavam arquivos;
+  todos foram corrigidos. De quebra, rotas `/api/...` inexistentes respondem 404 em JSON em vez do
+  `index.html`, e a ingestão responde 400 (não 500) a um JSON que não é objeto.
+- **Fase 0, fonte**: `@fontsource-variable/inter` (o pacote variável do Fontsource), só com o eixo
+  de peso. As medidas nos PNGs batem com a Inter sem tamanho óptico; os títulos de página são
+  600 com −0,02em, e o "NeuroSight" do painel, 600 com −0,03em.
+- **Fase 0, rotas em português** (`/pacientes`, `/sessoes/:id/analise`, `/admin/usuarios`...) e
+  placeholders por tabela (`routes.ts` + `PlaceholderPage`), em vez de um arquivo por tela.
+- **Fase 0, menu sem login**: até a Fase 1 o menu esconde o rodapé (usuário e Sair) e mostra
+  Administração para todos.
+- **Fase 0, protótipos divergentes**, resolvidos pelas telas e não pelos PNGs avulsos:
+  - miniatura do painel da marca com sidebar de 150 px (W01–W03), não 175 px (PNG do componente);
+  - divisória do rodapé do menu a 16 px do usuário (W05, W06), não 24 px (PNG do componente);
+  - botão secundário desabilitado em cinza (W06, W15), não esmaecido como na W21;
+  - opções em cartão com duas aparências: borda de campo, sem destaque (W07), e borda clara com
+    destaque azul na marcada (W18, W20).
+- **Fase 0, etiquetas removíveis**: o TagInput mostra um "x" em cada etiqueta; o protótipo, estático,
+  não mostra como tirar uma.
+- **Fase 0, ambiente**: o Python 3.14 local instalou tudo sem `uv`. Os testes usam `httpx2`, que o
+  Starlette 1.x pede para o TestClient. O `tsconfig` passou a acusar variáveis e parâmetros sem uso.
+- **Fase 0, imagem e docs**: entrou um `.dockerignore` (o build local copiava `node_modules` e
+  `.venv`) e o `alembic.ini` vai na imagem; o Dockerfile segue com `--workers 2` até a Fase 8. Nos
+  docs, só os comandos novos (testes, migrações) no `web/README.md` e uma nota no `DEPLOY.md`; o
+  resto fica para a Fase 8.
 
 ---
 

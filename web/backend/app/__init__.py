@@ -1,1 +1,1 @@
-# QuestPro Eye-Tracking API — pacote da aplicação FastAPI.
+# NeuroSight API — pacote da aplicação FastAPI.

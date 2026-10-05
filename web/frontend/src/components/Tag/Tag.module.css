@@ -1,0 +1,60 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  background: var(--color-fill-neutral-strong);
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pill {
+  border-radius: var(--radius-full);
+}
+
+.rounded {
+  border-radius: var(--radius-md);
+  background: var(--color-fill-neutral);
+}
+
+.sm {
+  height: 26px;
+  padding: 0 12px;
+  font-size: var(--font-size-sm);
+}
+
+.md {
+  height: 32px;
+  padding: 0 14px;
+  font-size: var(--font-size-md);
+}
+
+.pill.md {
+  height: 30px;
+  font-size: var(--font-size-sm);
+}
+
+/* Etiqueta removível (campo de etiquetas): o "x" fica sempre visível para dar para tirá-la. */
+.removable {
+  padding-right: 6px;
+}
+
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-text-muted);
+}
+
+.remove:hover {
+  background: rgba(26, 36, 70, 0.08);
+  color: var(--color-text);
+}

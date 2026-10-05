@@ -1,27 +1,50 @@
-import { Routes, Route, Link } from 'react-router-dom'
-import SessionsListPage from './pages/SessionsListPage'
-import SessionDetailPage from './pages/SessionDetailPage'
-import ThemeToggle from './components/ThemeToggle'
+import { Suspense, lazy } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { useUnauthorizedRedirect } from './api/useUnauthorizedRedirect'
+import AppLayout from './layouts/AppLayout'
+import AuthLayout from './layouts/AuthLayout'
+import FullscreenLayout from './layouts/FullscreenLayout'
+import NotFoundPage from './pages/NotFoundPage'
+import PlaceholderPage from './pages/PlaceholderPage'
+import { APP_SCREENS, AUTH_SCREENS, FULLSCREEN_SCREENS } from './routes'
+
+// Vitrine dos componentes, só no `npm run dev` (fica fora do build de produção).
+const ComponentsPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/ComponentsPage')) : null
 
 export default function App() {
+  useUnauthorizedRedirect()
+
   return (
-    <div className="app">
-      <header className="topbar">
-        <Link to="/" className="brand">
-          <span className="brand-dot" aria-hidden="true" />
-          <span className="brand-name">QuestPro</span>
-          <span className="brand-sub">Eye-Tracking</span>
-        </Link>
-        <div className="topbar-right">
-          <ThemeToggle />
-        </div>
-      </header>
-      <main className="content">
-        <Routes>
-          <Route path="/" element={<SessionsListPage />} />
-          <Route path="/sessions/:id" element={<SessionDetailPage />} />
-        </Routes>
-      </main>
-    </div>
+    <Routes>
+      <Route element={<AuthLayout />}>
+        {AUTH_SCREENS.map((screen) => (
+          <Route key={screen.path} path={screen.path} element={<PlaceholderPage screen={screen} variant="auth" />} />
+        ))}
+      </Route>
+
+      <Route element={<FullscreenLayout />}>
+        {FULLSCREEN_SCREENS.map((screen) => (
+          <Route key={screen.path} path={screen.path} element={<PlaceholderPage screen={screen} variant="fullscreen" />} />
+        ))}
+      </Route>
+
+      <Route element={<AppLayout />}>
+        {APP_SCREENS.map((screen) => (
+          <Route key={screen.path} path={screen.path} element={<PlaceholderPage screen={screen} />} />
+        ))}
+        <Route path="/admin" element={<Navigate to="/admin/usuarios" replace />} />
+        {ComponentsPage && (
+          <Route
+            path="/dev/componentes"
+            element={
+              <Suspense fallback={null}>
+                <ComponentsPage />
+              </Suspense>
+            }
+          />
+        )}
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
   )
 }

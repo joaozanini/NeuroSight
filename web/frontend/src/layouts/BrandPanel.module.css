@@ -1,0 +1,174 @@
+.panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(170deg, #5774f7 0%, #4463f2 32%, #3b5bf0 46%, #3653e1 66%, #2c45c6 100%);
+  color: var(--color-text-inverse);
+}
+
+.copy {
+  position: relative;
+  padding: 72px 60px 0;
+}
+
+.tagline {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  line-height: 24px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.title {
+  margin-top: 6px;
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-semibold);
+  line-height: 76px;
+  letter-spacing: -0.03em;
+}
+
+.description {
+  max-width: 500px;
+  margin-top: 14px;
+  font-size: 19px;
+  line-height: 30px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+/* Miniatura da tela de análise, cortada pela borda do painel como no protótipo. */
+.preview {
+  position: absolute;
+  top: 400px;
+  left: 60px;
+  display: flex;
+  width: 860px;
+  height: 900px;
+  overflow: hidden;
+  border-radius: 12px 0 0 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: 0 -2px 24px rgba(16, 26, 80, 0.12);
+}
+
+/* 150 px como nas telas W01–W03 (o PNG avulso do componente mostra 175 px). */
+.previewSidebar {
+  flex-shrink: 0;
+  width: 150px;
+  padding: 18px 12px 0;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.previewBrand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 4px;
+  font-size: 12.5px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.previewNav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.previewNav li {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding-left: 6px;
+  border-left: 2px solid transparent;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.previewNav .previewActive {
+  border-left-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.previewMain {
+  position: relative;
+  flex: 1;
+}
+
+.previewTitle {
+  position: absolute;
+  top: 17px;
+  left: 18px;
+  font-size: 16.5px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 22px;
+}
+
+.previewCard {
+  position: absolute;
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px rgba(26, 36, 70, 0.04), 0 3px 10px rgba(26, 36, 70, 0.05);
+}
+
+.previewFace {
+  top: 50px;
+  left: 18px;
+  width: 272px;
+  height: 175px;
+  padding: 8px;
+}
+
+.faceSvg {
+  width: 256px;
+  height: 160px;
+  border-radius: 8px;
+}
+
+.previewStat {
+  left: 302px;
+  width: 200px;
+  height: 62px;
+  padding: 11px 12px 0;
+}
+
+.previewStat span {
+  display: block;
+  font-size: 10.5px;
+  line-height: 14px;
+  color: var(--color-text-muted);
+}
+
+.previewStat strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 21px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+}
+
+.previewChart {
+  top: 238px;
+  left: 18px;
+  width: 484px;
+  height: 116px;
+}
+
+.previewChartTitle {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 16px;
+}
+
+.chartSvg {
+  width: 470px;
+  height: 116px;
+}

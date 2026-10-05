@@ -1,4 +1,5 @@
 """Leitura: lista paginada (sem samples), detalhe (com tudo), vídeo (Range) e delete."""
+import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,34 +10,15 @@ from sqlalchemy.orm import Session as DbSession
 from ..config import settings
 from ..db import get_db
 from ..models import Session
+from ..schemas.session import SessionDeleted, SessionDetail, SessionPage, SessionSummary
 from ..security import require_api_key
 from ..services.storage import storage
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
-def to_summary(s: Session) -> dict:
-    return {
-        "id": s.id,
-        "device_session_id": s.device_session_id,
-        "status": s.status,
-        "captured_at": s.captured_at.isoformat() if s.captured_at else None,
-        "created_at": s.created_at.isoformat() if s.created_at else None,
-        "completed_at": s.completed_at.isoformat() if s.completed_at else None,
-        "duration_seconds": s.duration_seconds,
-        "frame_count": s.frame_count,
-        "declared_frame_count": s.declared_frame_count,
-        "sample_count": s.sample_count,
-        "valid_sample_count": s.valid_sample_count,
-        "frame_width": s.frame_width,
-        "frame_height": s.frame_height,
-        "video_fps": s.video_fps,
-        "video_codec": s.video_codec,
-        "has_video": bool(s.video_path),
-    }
-
-
-@router.get("/sessions")
+@router.get("/sessions", response_model=SessionPage)
 def list_sessions(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -46,25 +28,30 @@ def list_sessions(
     rows = db.scalars(
         select(Session).order_by(Session.created_at.desc()).limit(limit).offset(offset)
     ).all()
-    return {"items": [to_summary(s) for s in rows], "total": total, "limit": limit, "offset": offset}
+    return SessionPage(
+        items=[SessionSummary.model_validate(s) for s in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
-@router.get("/sessions/{sid}")
+@router.get("/sessions/{sid}", response_model=SessionDetail)
 def get_session(sid: str, db: DbSession = Depends(get_db)):
     s = db.get(Session, sid)
     if s is None:
         raise HTTPException(status_code=404, detail="sessão não encontrada")
-    d = to_summary(s)
-    d.update({
-        "meta": s.meta,
-        "frames": s.frames,
-        "samples": s.samples,
-        "uv_origin": s.uv_origin,
-        "capture_fov_deg": s.capture_fov_deg,
-        "video_url": f"{settings.api_prefix}/sessions/{s.id}/video" if s.video_path else None,
-        "error_detail": s.error_detail,
-    })
-    return d
+    summary = SessionSummary.model_validate(s)
+    return SessionDetail(
+        **summary.model_dump(),
+        meta=s.meta,
+        frames=s.frames,
+        samples=s.samples,
+        uv_origin=s.uv_origin,
+        capture_fov_deg=s.capture_fov_deg,
+        video_url=f"{settings.api_prefix}/sessions/{s.id}/video" if s.video_path else None,
+        error_detail=s.error_detail,
+    )
 
 
 @router.get("/sessions/{sid}/video")
@@ -77,7 +64,7 @@ def get_video(sid: str, db: DbSession = Depends(get_db)):
     return FileResponse(s.video_path, media_type="video/mp4", content_disposition_type="inline")
 
 
-@router.delete("/sessions/{sid}", dependencies=[Depends(require_api_key)])
+@router.delete("/sessions/{sid}", response_model=SessionDeleted, dependencies=[Depends(require_api_key)])
 def delete_session(sid: str, db: DbSession = Depends(get_db)):
     s = db.get(Session, sid)
     if s is None:
@@ -85,4 +72,5 @@ def delete_session(sid: str, db: DbSession = Depends(get_db)):
     storage.delete_session(sid)
     db.delete(s)
     db.commit()
-    return {"deleted": sid}
+    logger.info("sessão %s (%s) apagada com a mídia", sid, s.device_session_id)
+    return SessionDeleted(deleted=sid)

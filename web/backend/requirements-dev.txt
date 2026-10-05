@@ -1,0 +1,4 @@
+# Dependências para rodar os testes (pytest em web/backend). A imagem Docker não as instala.
+-r requirements.txt
+pytest>=8
+httpx2>=2.0   # cliente do TestClient do Starlette (sucessor do httpx)
