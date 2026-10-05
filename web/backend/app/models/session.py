@@ -1,39 +1,24 @@
-"""Modelo de dados. Uma tabela `sessions` com meta/frames/samples como JSON (JSONB no PG).
+"""Sessão de captura do fluxo antigo (cena 3D): uma tabela com meta/frames/samples em JSON.
 
 O viewer precisa de TODAS as samples de uma sessão de uma vez (overlay client-side),
 então guardar como JSON evita join e devolve tudo numa leitura. Colunas achatadas
 (fov, w, h, fps, contagens, status...) servem para listar/ordenar barato.
+
+O esquema desta tabela é o da baseline do Alembic (0001_baseline) e não deve mudar sem migração.
 """
-import uuid
-from datetime import datetime, timezone
+from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy.orm import mapped_column
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, mapped_column
-
-# JSON portável: vira JSONB no PostgreSQL, JSON comum no SQLite.
-JSONType = JSON().with_variant(JSONB(), "postgresql")
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-def _uuid() -> str:
-    return uuid.uuid4().hex
-
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
+from .base import Base, JSONType, new_id, utcnow
 
 
 class Session(Base):
     __tablename__ = "sessions"
 
-    id = mapped_column(String(32), primary_key=True, default=_uuid)
+    id = mapped_column(String(32), primary_key=True, default=new_id)
     # Nome da pasta no device (X-Session-Id) — chave de idempotência (re-run retoma a mesma linha).
     device_session_id = mapped_column(String(255), unique=True, index=True, nullable=False)
-    status = mapped_column(String(20), default="uploading", index=True, nullable=False)  # uploading|complete|failed
+    status = mapped_column(String(20), default="uploading", index=True, nullable=False)  # uploading|processing|complete|failed
 
     # meta achatado
     capture_fov_deg = mapped_column(Float, nullable=True)
@@ -51,7 +36,7 @@ class Session(Base):
 
     # tempos
     captured_at = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    created_at = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     completed_at = mapped_column(DateTime(timezone=True), nullable=True)
 
     # mídia (caminhos/keys, nunca blob)
@@ -65,3 +50,7 @@ class Session(Base):
     samples = mapped_column(JSONType, default=list)   # [{t,valid,world,uv,confidence}]
 
     error_detail = mapped_column(Text, nullable=True)
+
+    @property
+    def has_video(self) -> bool:
+        return bool(self.video_path)

@@ -34,5 +34,8 @@ class Settings(BaseSettings):
 
     api_prefix: str = "/api/v1"
 
+    # Nível do log da aplicação (DEBUG, INFO, WARNING...). O do uvicorn segue o --log-level.
+    log_level: str = "INFO"
+
 
 settings = Settings()

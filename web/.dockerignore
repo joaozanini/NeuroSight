@@ -1,0 +1,15 @@
+# Fora do contexto do build: dependências e artefatos locais (a imagem instala as próprias),
+# dados de desenvolvimento e documentação.
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/*.db
+frontend/dist
+backend/.venv
+backend/tests
+backend/media
+media
+synthetic
+docs
+*.docx
+.env

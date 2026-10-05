@@ -21,3 +21,6 @@ Thumbs.db
 
 # sessao sintetica de teste (gerada por scripts/make_synthetic_session.py)
 synthetic/
+
+# pytest
+.pytest_cache/

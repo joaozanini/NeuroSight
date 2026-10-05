@@ -6,9 +6,12 @@ navegador toca de forma confiável. Se o ffmpeg embutido não estiver disponíve
 o `VideoWriter` do OpenCV com `mp4v` (que pode não tocar no Chrome — o codec usado é gravado
 para o front avisar). fps constante = meta.videoFps; frames em ordem de idx.
 """
+import logging
 import os
 
 import cv2
+
+logger = logging.getLogger(__name__)
 
 
 def _even(n: int) -> int:
@@ -77,8 +80,8 @@ def assemble_mp4(frames_dir: str, frames: list, width: int, height: int,
         written = _assemble_h264(frames_dir, ordered, width, height, fps, out_path)
         if written > 0 and os.path.isfile(out_path) and os.path.getsize(out_path) > 0:
             return "h264", written
-    except Exception:
-        pass  # cai para o fallback
+    except Exception as e:  # cai para o fallback
+        logger.warning("H.264 indisponível (%s); tentando mp4v pelo OpenCV", e)
 
     written = _assemble_mp4v(frames_dir, ordered, width, height, fps, out_path)
     if written > 0 and os.path.isfile(out_path) and os.path.getsize(out_path) > 0:

@@ -22,6 +22,9 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/app ./app
+# alembic.ini só para a linha de comando (ex.: docker compose exec app alembic current);
+# a API aplica as migrações sozinha ao subir.
+COPY backend/alembic.ini ./
 COPY --from=fe /fe/dist ./static
 
 # mídia (frames + mp4) fica num volume montado em /data/media (ver docker-compose.yml)

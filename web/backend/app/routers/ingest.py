@@ -2,9 +2,14 @@
 
 Idempotente por X-Session-Id: re-rodar o device retoma a mesma linha/pasta, e frames são
 sobrescritos por nome. Assim um upload interrompido pode ser continuado sem duplicar nada.
+
+Os endpoints são `def`: banco e disco são I/O bloqueante e rodam no threadpool do FastAPI, sem
+travar o event loop.
 """
 import json
+import logging
 import os
+import shutil
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, Request, UploadFile
@@ -13,11 +18,15 @@ from sqlalchemy.orm import Session as DbSession
 
 from ..db import SessionLocal, get_db
 from ..models import Session
+from ..schemas.session import FramesReceived, IngestCompleted, IngestCreated
 from ..services.storage import storage
 from ..services.video import assemble_mp4
 from ..utils import compute_rollups, parse_captured_at
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+JPEG_MAGIC = b"\xff\xd8\xff"
 
 
 def _f(v):
@@ -28,17 +37,23 @@ def _i(v):
     return int(v) if v else None
 
 
-@router.post("/sessions")
-async def create_session(
-    request: Request,
+async def read_raw_body(request: Request) -> bytes:
+    """Corpo cru do gaze.json. É async para ler o stream; o endpoint que a usa continua `def`."""
+    return await request.body()
+
+
+@router.post("/sessions", response_model=IngestCreated)
+def create_session(
+    raw: bytes = Depends(read_raw_body),
     x_session_id: str = Header(..., alias="X-Session-Id"),
     db: DbSession = Depends(get_db),
 ):
     """Cria/atualiza a sessão a partir do gaze.json cru no corpo. Devolve o id do servidor."""
-    raw = await request.body()
     try:
         data = json.loads(raw)
-    except Exception:
+    except ValueError:
+        raise HTTPException(status_code=400, detail="corpo não é JSON válido")
+    if not isinstance(data, dict):
         raise HTTPException(status_code=400, detail="corpo não é JSON válido")
 
     meta = data.get("meta", {}) or {}
@@ -47,6 +62,7 @@ async def create_session(
     sample_count, valid_count, duration = compute_rollups(frames, samples)
 
     sess = db.scalar(select(Session).where(Session.device_session_id == x_session_id))
+    resumed = sess is not None
     if sess is None:
         sess = Session(device_session_id=x_session_id, status="uploading")
         db.add(sess)
@@ -72,16 +88,21 @@ async def create_session(
     db.commit()
     db.refresh(sess)
 
-    return {
-        "id": sess.id,
-        "status": sess.status,
-        "expected_frames": sess.declared_frame_count,
-        "received_frames": sess.frame_count,
-    }
+    logger.info(
+        "sessão %s (%s) %s: %d frames declarados, %d já no disco, %d amostras (%d válidas)",
+        sess.id, x_session_id, "retomada" if resumed else "criada",
+        sess.declared_frame_count, sess.frame_count, sample_count, valid_count,
+    )
+    return IngestCreated(
+        id=sess.id,
+        status=sess.status,
+        expected_frames=sess.declared_frame_count,
+        received_frames=sess.frame_count,
+    )
 
 
-@router.post("/sessions/{sid}/frames")
-async def upload_frames(
+@router.post("/sessions/{sid}/frames", response_model=FramesReceived)
+def upload_frames(
     sid: str,
     frames: list[UploadFile] = File(...),
     db: DbSession = Depends(get_db),
@@ -98,26 +119,24 @@ async def upload_frames(
         if not name.lower().endswith(".jpg"):
             rejected.append(uf.filename or "?")
             continue
-        head = await uf.read(3)
-        if head[:3] != b"\xff\xd8\xff":  # não é JPEG
+        head = uf.file.read(len(JPEG_MAGIC))
+        if head != JPEG_MAGIC:  # não é JPEG
             rejected.append(name)
             continue
-        dest = storage.frame_path(sid, name)
-        with open(dest, "wb") as out:
+        with open(storage.frame_path(sid, name), "wb") as out:
             out.write(head)
-            while True:
-                chunk = await uf.read(1 << 20)
-                if not chunk:
-                    break
-                out.write(chunk)
+            shutil.copyfileobj(uf.file, out, 1 << 20)
         saved.append(name)
 
     sess.frame_count = storage.count_frames(sid)
     db.commit()
-    return {"received_frames": sess.frame_count, "saved": saved, "rejected": rejected}
+    if rejected:
+        logger.warning("sessão %s: %d arquivo(s) recusado(s) no lote: %s", sid, len(rejected), rejected[:5])
+    logger.debug("sessão %s: +%d frames (%d no disco)", sid, len(saved), sess.frame_count)
+    return FramesReceived(received_frames=sess.frame_count, saved=saved, rejected=rejected)
 
 
-@router.post("/sessions/{sid}/complete")
+@router.post("/sessions/{sid}/complete", response_model=IngestCompleted)
 def complete_session(sid: str, background: BackgroundTasks, db: DbSession = Depends(get_db)):
     """Finaliza o upload e agenda a montagem do MP4 em BACKGROUND.
 
@@ -136,16 +155,18 @@ def complete_session(sid: str, background: BackgroundTasks, db: DbSession = Depe
         sess.status = "failed"
         sess.error_detail = "nenhum frame recebido"
         db.commit()
+        logger.warning("sessão %s: complete sem nenhum frame", sid)
         raise HTTPException(status_code=409, detail="nenhum frame recebido — nada para montar")
 
     if sess.status == "complete" and sess.video_path:
-        return {"id": sess.id, "status": sess.status, "frame_count": frame_count, "video_ready": True}
+        return IngestCompleted(id=sess.id, status=sess.status, frame_count=frame_count, video_ready=True)
 
     sess.status = "processing"
     sess.error_detail = None
     db.commit()
     background.add_task(_assemble_and_finalize, sid)
-    return {"id": sess.id, "status": "processing", "frame_count": frame_count, "video_ready": False}
+    logger.info("sessão %s: %d frames recebidos, montagem do MP4 agendada", sid, frame_count)
+    return IngestCompleted(id=sess.id, status="processing", frame_count=frame_count, video_ready=False)
 
 
 def _assemble_and_finalize(sid: str) -> None:
@@ -164,13 +185,16 @@ def _assemble_and_finalize(sid: str) -> None:
         if codec is None or written == 0:
             sess.status = "failed"
             sess.error_detail = "falha ao montar o MP4 (codec indisponível ou frames ilegíveis)"
+            logger.error("sessão %s: %s", sid, sess.error_detail)
         else:
             sess.video_path = out_path
             sess.video_codec = codec
             sess.status = "complete"
             sess.completed_at = datetime.now(timezone.utc)
+            logger.info("sessão %s: MP4 pronto (%s, %d frames)", sid, codec, written)
         db.commit()
     except Exception as e:  # nunca deixa a task matar o worker silenciosamente sem registrar
+        logger.exception("sessão %s: erro na montagem do MP4", sid)
         db.rollback()
         sess = db.get(Session, sid)
         if sess is not None:
