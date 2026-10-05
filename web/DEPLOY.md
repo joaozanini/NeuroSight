@@ -65,6 +65,17 @@ Alembic, o banco que já existia é reconhecido e carimbado na baseline, sem rec
 mostra `banco anterior ao Alembic: carimbando a baseline 0001_baseline`). Para conferir a versão
 do banco: `docker compose exec app alembic current`.
 
+O site exige login. Crie o primeiro admin uma vez (o link do convite aparece no terminal):
+
+```bash
+docker compose exec -e QUESTPRO_PUBLIC_BASE_URL=http://SEU-SERVIDOR:8000 app \
+  python -m app.seed --admin-email voce@lab.br --admin-name "Seu Nome"
+```
+
+> Até a Fase 8 do plano, o `docker-compose.yml` não repassa as variáveis de e-mail e de endereço
+> do site (`QUESTPRO_SMTP_*`, `QUESTPRO_PUBLIC_BASE_URL`): os convites que o admin cria pelo site
+> mostram um link com `localhost:5173`, que precisa ter o endereço trocado à mão.
+
 ## 5. Testar (nesta ordem — cada passo isola uma camada)
 
 ```bash
