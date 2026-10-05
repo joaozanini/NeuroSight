@@ -37,5 +37,35 @@ class Settings(BaseSettings):
     # Nível do log da aplicação (DEBUG, INFO, WARNING...). O do uvicorn segue o --log-level.
     log_level: str = "INFO"
 
+    # ---- Contas e acesso ----
+    # Chave que assina o cookie de sessão (JWT). Vazia = gerada uma vez e guardada em
+    # <media_root>/.secret_key, para valer entre reinícios e entre os workers.
+    secret_key: str = ""
+    # Duração da sessão do site; o cookie é renovado sozinho quando passa da metade.
+    session_hours: int = 12
+    # Cookie só por HTTPS. Ligue no servidor (atrás do proxy com TLS); no dev fica desligado.
+    cookie_secure: bool = False
+    # Validade dos links de convite e de redefinição de senha.
+    invite_hours: int = 7 * 24
+    reset_hours: int = 2
+
+    # Endereço do site usado nos links dos e-mails (convite, redefinição de senha).
+    public_base_url: str = "http://localhost:5173"
+
+    # SMTP para os e-mails. Sem host, nada é enviado: o admin vê e copia o link na tela, e o link
+    # de "esqueci minha senha" vai para o log do servidor.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "NeuroSight <nao-responda@neurosight.local>"
+    # starttls (porta 587), ssl (porta 465) ou none (Mailpit no dev, porta 1025).
+    smtp_security: str = "starttls"
+    smtp_timeout: float = 10.0
+
+    @property
+    def smtp_enabled(self) -> bool:
+        return bool(self.smtp_host)
+
 
 settings = Settings()

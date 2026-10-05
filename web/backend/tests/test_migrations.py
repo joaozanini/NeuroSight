@@ -1,4 +1,5 @@
-"""Migrações: a baseline reproduz o esquema dos modelos, e um banco antigo é carimbado sem perder dados.
+"""Migrações: o head reproduz o esquema dos modelos, um banco antigo é carimbado sem perder dados,
+a matriz de permissões sai semeada e a auditoria não aceita UPDATE nem DELETE.
 
 Os testes rodam no SQLite. Com NEUROSIGHT_TEST_PG_URL apontando para um PostgreSQL descartável
 (ex.: postgresql+psycopg://postgres:senha@localhost:55499/postgres), os mesmos testes rodam nele.
@@ -6,14 +7,19 @@ Os testes rodam no SQLite. Com NEUROSIGHT_TEST_PG_URL apontando para um PostgreS
 import os
 
 import pytest
+from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import MetaData, create_engine, inspect, insert, select, text
+from sqlalchemy.exc import DBAPIError
 
-from app.db import BASELINE_REVISION, migrate
-from app.models import Base, Session
+from app.db import BASELINE_REVISION, alembic_config, migrate
+from app.models import AuditLog, Base, RolePermission, Session
+from app.services.permissions import DEFAULT_GRANTS
 
 PG_URL = os.environ.get("NEUROSIGHT_TEST_PG_URL")
+HEAD = ScriptDirectory.from_config(alembic_config()).get_current_head()
 
 
 @pytest.fixture(params=["sqlite", "postgresql"])
@@ -25,7 +31,10 @@ def engine(request, tmp_path):
             pytest.skip("NEUROSIGHT_TEST_PG_URL não definida")
         eng = create_engine(PG_URL)
         with eng.begin() as conn:
-            conn.execute(text("DROP TABLE IF EXISTS sessions, alembic_version CASCADE"))
+            conn.execute(text(
+                "DROP TABLE IF EXISTS audit_log, role_permissions, auth_tokens, users, sessions, alembic_version CASCADE"
+            ))
+            conn.execute(text("DROP FUNCTION IF EXISTS audit_log_read_only() CASCADE"))
     yield eng
     eng.dispose()
 
@@ -49,14 +58,14 @@ def create_legacy_schema(engine):
 
 def test_fresh_database_reaches_head_matching_models(engine):
     migrate(engine)
-    assert current_revision(engine) == BASELINE_REVISION
+    assert current_revision(engine) == HEAD
     assert schema_diff(engine) == []
 
 
 def test_migrate_is_idempotent(engine):
     migrate(engine)
     migrate(engine)
-    assert current_revision(engine) == BASELINE_REVISION
+    assert current_revision(engine) == HEAD
 
 
 def test_legacy_database_is_stamped_and_keeps_its_rows(engine):
@@ -69,7 +78,7 @@ def test_legacy_database_is_stamped_and_keeps_its_rows(engine):
 
     migrate(engine)
 
-    assert current_revision(engine) == BASELINE_REVISION
+    assert current_revision(engine) == HEAD
     assert schema_diff(engine) == []
     with engine.connect() as conn:
         rows = conn.execute(select(Session.__table__.c.device_session_id)).scalars().all()
@@ -84,3 +93,41 @@ def test_baseline_names_indexes_and_primary_key_like_create_all(engine):
     if engine.dialect.name == "postgresql":
         # Nome que o PostgreSQL deu à PK no banco criado pelo create_all antigo.
         assert insp.get_pk_constraint("sessions")["name"] == "sessions_pkey"
+
+
+def test_permission_matrix_is_seeded_with_the_default(engine):
+    """A lista literal da migração 0002 tem de bater com a de services/permissions.py."""
+    migrate(engine)
+    with engine.connect() as conn:
+        rows = conn.execute(select(RolePermission.role, RolePermission.permission)).all()
+    seeded = {}
+    for role, permission in rows:
+        seeded.setdefault(role, set()).add(permission)
+    assert seeded == {role: set(perms) for role, perms in DEFAULT_GRANTS.items()}
+
+
+def test_audit_log_only_accepts_inserts(engine):
+    migrate(engine)
+    with engine.begin() as conn:
+        conn.execute(insert(AuditLog.__table__).values(
+            created_at=AuditLog.created_at.default.arg(None), action="login", entity_type="system",
+            entity_label="Acesso ao sistema", changes=[],
+        ))
+    for statement in ("UPDATE audit_log SET action = 'outra'", "DELETE FROM audit_log"):
+        with pytest.raises(DBAPIError, match="audit_log só aceita inserções"):
+            with engine.begin() as conn:
+                conn.execute(text(statement))
+    if engine.dialect.name == "postgresql":
+        with pytest.raises(DBAPIError, match="audit_log só aceita inserções"):
+            with engine.begin() as conn:
+                conn.execute(text("TRUNCATE audit_log"))
+    with engine.connect() as conn:
+        assert conn.execute(select(AuditLog.__table__.c.action)).scalars().all() == ["login"]
+
+
+def test_accounts_migration_downgrades_to_the_baseline(engine):
+    migrate(engine)
+    with engine.begin() as conn:
+        command.downgrade(alembic_config(conn), BASELINE_REVISION)
+    assert current_revision(engine) == BASELINE_REVISION
+    assert set(inspect(engine).get_table_names()) == {"sessions", "alembic_version"}

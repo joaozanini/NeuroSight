@@ -18,6 +18,9 @@ os.environ["QUESTPRO_DB_URL"] = f"sqlite:///{TMP_ROOT / 'test.db'}"
 os.environ["QUESTPRO_MEDIA_ROOT"] = str(MEDIA_DIR)
 os.environ["QUESTPRO_STATIC_DIR"] = str(STATIC_DIR)
 os.environ["QUESTPRO_API_KEY"] = ""
+os.environ["QUESTPRO_SECRET_KEY"] = "chave-dos-testes-com-pelo-menos-32-bytes"
+os.environ["QUESTPRO_SMTP_HOST"] = ""
+os.environ["QUESTPRO_PUBLIC_BASE_URL"] = "http://site.teste"
 
 (STATIC_DIR / "assets").mkdir(parents=True)
 (STATIC_DIR / "index.html").write_text("<!doctype html><title>NeuroSight</title>", encoding="utf-8")
@@ -39,18 +42,35 @@ def client():
 
 @pytest.fixture(autouse=True)
 def clean_state(request):
-    """Cada teste começa sem sessões no banco e sem mídia no disco."""
+    """Cada teste começa com o banco recém-migrado, sem mídia no disco e sem cookie de login.
+
+    O banco é recriado (e não esvaziado) porque a auditoria não aceita DELETE.
+    """
     yield
     if "client" not in request.fixturenames:
         return
-    from app.db import SessionLocal
-    from app.models import Session
+    from sqlalchemy import text
 
-    with SessionLocal() as db:
-        db.query(Session).delete()
-        db.commit()
+    from app.db import engine, migrate
+    from app.models import Base
+    from app.services.ratelimit import login_limiter
+
+    request.getfixturevalue("client").cookies.clear()
+    login_limiter.clear()
+    Base.metadata.drop_all(engine)
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+    migrate()
     shutil.rmtree(MEDIA_DIR, ignore_errors=True)
     MEDIA_DIR.mkdir(exist_ok=True)
+
+
+@pytest.fixture
+def db():
+    from app.db import SessionLocal
+
+    with SessionLocal() as session:
+        yield session
 
 
 def pytest_sessionfinish(session, exitstatus):
