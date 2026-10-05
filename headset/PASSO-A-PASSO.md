@@ -1,5 +1,9 @@
 # Passo a passo completo — do zero ao heatmap
 
+> ℹ️ Este guia foi escrito quando o app tinha repositório próprio (`C:\GitHub\VR-EyeTracking-QuestPro`).
+> No monorepo **NeuroSight**, a "raiz do repo" citada aqui é a pasta `headset/`
+> (ex.: `C:\GitHub\NeuroSight\headset\EyeTrackingQuestPro.uproject`).
+
 Guia detalhado para montar o app de eye tracking no Meta Quest Pro (UE 5.5, C++, standalone)
 e gerar o heatmap. Siga as fases na ordem. Onde aparecer ⚠️, é um ponto que costuma travar.
 

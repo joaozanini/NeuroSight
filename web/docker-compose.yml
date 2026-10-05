@@ -2,6 +2,10 @@
 #   1) copie .env.example para .env e defina QUESTPRO_API_KEY e QUESTPRO_DB_PASSWORD
 #   2) docker compose up -d --build
 #   3) site + API em http://<ip-do-servidor>:${QUESTPRO_HTTP_PORT:-8000}
+# Nome fixo do projeto: mantém os volumes (questpro-eyetracking-web_pgdata/_media) iguais aos
+# de antes da unificação no monorepo, quando o compose rodava numa pasta com esse nome.
+name: questpro-eyetracking-web
+
 services:
   db:
     image: postgres:16

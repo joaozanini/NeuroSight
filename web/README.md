@@ -1,7 +1,7 @@
 # QuestPro Eye-Tracking — Ambiente Web
 
 Plataforma web + API feita sob medida para o app
-**[QuestPro-EyeTracking](https://github.com/joaozanini/QuestPro-EyeTracking)** (Unreal Engine 5.5,
+**[do headset](../headset/)** (Unreal Engine 5.5,
 Meta Quest Pro): recebe as sessões de rastreamento ocular gravadas no headset, armazena em
 banco, monta o vídeo e permite **assistir cada sessão com ou sem heatmap do olhar**.
 
@@ -34,7 +34,7 @@ banco, monta o vídeo e permite **assistir cada sessão com ou sem heatmap do ol
 
 O formato dos dados (`gaze.json`: `meta` + `frames[]` + `samples[]` com `uv` normalizado,
 origem top-left) é definido pelo app — veja o
-[README do app](https://github.com/joaozanini/QuestPro-EyeTracking#dados-gravados-por-sessão).
+[README do app](../headset/README.md#dados-gravados-por-sessão).
 
 ## Rodar em desenvolvimento (sem instalar banco)
 
@@ -81,7 +81,7 @@ Docs interativas em `http://localhost:8000/docs`.
 
 ## Heatmap (como é calculado)
 
-Porta fiel do algoritmo de referência (`tools/heatmap_overlay.py` do repo do app): para o
+Porta fiel do algoritmo de referência ([`headset/tools/heatmap_overlay.py`](../headset/tools/heatmap_overlay.py)): para o
 instante `t`, as amostras válidas na janela `[t−W, t]` depositam gaussianas (σ configurável)
 com decaimento linear, normalizadas pelo pico e coloridas com colormap JET — tudo no
 navegador, em ¼ de resolução, com os parâmetros ajustáveis sem reprocessar nada.

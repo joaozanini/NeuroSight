@@ -30,8 +30,9 @@ docker --version && docker compose version
 ## 2. Colocar o projeto na VM
 
 ```bash
-git clone https://github.com/SEU-USUARIO/QuestPro-EyeTracking-Web.git
-cd QuestPro-EyeTracking-Web
+# Só a pasta web/: o servidor não precisa dos assets do Unreal (~330 MB em LFS).
+GIT_LFS_SKIP_SMUDGE=1 git clone --filter=blob:none --sparse https://github.com/joaozanini/NeuroSight.git
+cd NeuroSight && git sparse-checkout set web && cd web
 # (alternativa sem git: scp -r da pasta do projeto pro servidor)
 ```
 
@@ -75,7 +76,7 @@ Se 5.1 funciona e 5.3 não → é firewall da faculdade (volte ao passo 0.4).
 
 ```bash
 # 5.4 ingestão de ponta a ponta, do seu PC (Windows), com uma sessão real já gravada:
-py -3.12 scripts\replay_session.py "C:\GitHub\VR-EyeTracking-QuestPro\Saved\GazeSessions\2026-06-17_22-10-54" ^
+py -3.12 scripts\replay_session.py "C:\GitHub\NeuroSight\headset\Saved\GazeSessions\2026-06-17_22-10-54" ^
     --api http://IP-DA-VM:8000/api/v1 --api-key SUA-CHAVE
 # -> create / frames / complete / status: complete / codec=h264
 # e a sessão aparece em http://IP-DA-VM:8000
@@ -102,7 +103,7 @@ Não precisa mexer em código — os valores da instância valem sobre o default
 ```bash
 docker compose logs -f app                     # acompanhar uploads chegando
 docker compose restart app                     # reiniciar só a API
-git pull && docker compose up -d --build       # atualizar o sistema
+git pull && docker compose up -d --build       # atualizar o sistema (dentro de NeuroSight/web)
 docker system df                               # uso de disco do docker
 ```
 

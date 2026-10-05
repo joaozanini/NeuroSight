@@ -6,7 +6,7 @@ puxadas via adb pull). Faz create -> frames (em lotes) -> complete e aguarda a m
 do MP4 (o complete é assíncrono: status processing -> complete).
 
 Exemplos:
-  py -3.12 scripts/replay_session.py "C:/GitHub/VR-EyeTracking-QuestPro/Saved/GazeSessions/2026-06-17_22-10-54"
+  py -3.12 scripts/replay_session.py "C:/GitHub/NeuroSight/headset/Saved/GazeSessions/2026-06-17_22-10-54"
   py -3.12 scripts/replay_session.py ./synthetic --api http://SERVIDOR:8000/api/v1 --api-key MINHACHAVE
 """
 import argparse

@@ -2,7 +2,7 @@
 
 App standalone para **Meta Quest Pro** que registra **para onde a pessoa está olhando** dentro
 de um ambiente 3D: grava o vídeo da cena, amostra o olhar a ~72–90 Hz, e ao final da sessão
-**envia tudo automaticamente** para o [ambiente web companheiro](https://github.com/joaozanini/QuestPro-EyeTracking-Web),
+**envia tudo automaticamente** para o [ambiente web](../web/) (neste mesmo repositório),
 onde cada sessão pode ser assistida **com ou sem heatmap** do olhar.
 
 > 🧪 Validado em campo (13/07/2026): marcador 3D no ponto olhado, coordenadas de mundo e
@@ -12,9 +12,9 @@ onde cada sessão pode ser assistida **com ou sem heatmap** do olhar.
 
 O ambiente web exibindo uma sessão gravada por este app (heatmap, validação e vídeo puro):
 
-![Demo do ambiente web](docs/demo-ambiente-web.gif)
+![Demo do ambiente web](../web/docs/demo-ambiente-web.gif)
 
-🎥 [Vídeo completo da demonstração (1 min, MP4)](docs/demo-ambiente-web.mp4)
+🎥 [Vídeo completo da demonstração (1 min, MP4)](../web/docs/demo-ambiente-web.mp4)
 
 ## Como funciona
 
@@ -37,18 +37,18 @@ O ambiente web exibindo uma sessão gravada por este app (heatmap, validação e
   gravado — os dois devem coincidir). Para sessões reais, desligue-a no Details
   (`Show Marker`) sem afetar a gravação.
 
-## 🌐 Ambiente web (repositório irmão)
+## 🌐 Ambiente web (`../web`)
 
-O **[QuestPro-EyeTracking-Web](https://github.com/joaozanini/QuestPro-EyeTracking-Web)** é a
+O **[ambiente web](../web/)** é a
 outra metade do sistema — feito sob medida para receber as sessões deste app:
 
 - **Recebe** as sessões enviadas pelo botão B (upload em lotes com retomada) ou por script;
 - **Armazena** metadados/amostras em banco (SQLite dev / PostgreSQL) e monta o **MP4 (H.264)**;
 - **Visualiza** cada sessão com **heatmap em tempo real** (janela temporal, σ e opacidade
   ajustáveis ao vivo), **modo validação** (crosshair sobre o vídeo) e tema claro/escuro;
-- Deploy documentado para servidor (Docker Compose): [`DEPLOY.md`](https://github.com/joaozanini/QuestPro-EyeTracking-Web/blob/main/DEPLOY.md).
+- Deploy documentado para servidor (Docker Compose): [`web/DEPLOY.md`](../web/DEPLOY.md).
 
-## Estrutura deste repositório
+## Estrutura desta pasta (`headset/`)
 
 | Caminho | O que é |
 |---|---|
@@ -122,7 +122,7 @@ Saved/GazeSessions/<YYYY-MM-DD_HH-MM-SS>/
 
 O JSON tem *flush* periódico (~5 s): mesmo que o app seja morto, a sessão sobrevive.
 Sem rede no momento? Puxe depois com `adb pull` e envie com o
-[`replay_session.py`](https://github.com/joaozanini/QuestPro-EyeTracking-Web/blob/main/scripts/replay_session.py) do repo web.
+[`web/scripts/replay_session.py`](../web/scripts/replay_session.py).
 
 ## Heatmap offline (sem o site)
 
