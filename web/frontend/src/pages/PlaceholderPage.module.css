@@ -1,11 +1,3 @@
-.withTabs {
-  margin-bottom: 20px;
-}
-
-.bodyAfterTabs {
-  margin-top: 28px;
-}
-
 .notice {
   display: flex;
   align-items: flex-start;
@@ -35,28 +27,4 @@
 
 .fullscreen {
   padding: 32px 48px;
-}
-
-.auth {
-  display: flex;
-  flex-direction: column;
-}
-
-.authBack {
-  align-self: flex-start;
-  margin-bottom: 24px;
-}
-
-.authTitle {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-semibold);
-  line-height: 40px;
-  letter-spacing: -0.02em;
-}
-
-.authSubtitle {
-  margin: 12px 0 32px;
-  font-size: var(--font-size-lg);
-  line-height: 28px;
-  color: var(--color-text-muted);
 }

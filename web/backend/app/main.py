@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import settings
 from .db import migrate
 from .logging_config import setup_logging
-from .routers import ingest, sessions
+from .routers import audit, auth, ingest, me, permissions, sessions, users
 from .schemas.common import Health
 from .security import require_api_key
 
@@ -41,6 +41,8 @@ app.add_middleware(
     allow_origins=[settings.frontend_origin],
     allow_methods=["*"],
     allow_headers=["*"],
+    # O login do site é por cookie.
+    allow_credentials=True,
     expose_headers=["Content-Range", "Accept-Ranges", "Content-Length"],
 )
 
@@ -50,6 +52,11 @@ app.include_router(
     dependencies=[Depends(require_api_key)],
 )
 app.include_router(sessions.router, prefix=settings.api_prefix, tags=["sessions"])
+app.include_router(auth.router, prefix=settings.api_prefix, tags=["auth"])
+app.include_router(me.router, prefix=settings.api_prefix, tags=["me"])
+app.include_router(users.router, prefix=settings.api_prefix, tags=["users"])
+app.include_router(permissions.router, prefix=settings.api_prefix, tags=["permissions"])
+app.include_router(audit.router, prefix=settings.api_prefix, tags=["audit"])
 
 
 @app.get("/healthz", response_model=Health)

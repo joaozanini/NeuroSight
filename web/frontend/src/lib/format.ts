@@ -139,3 +139,9 @@ export function initials(name: string): string {
   const last = words.length > 1 ? words[words.length - 1][0] : ''
   return (first + last).toLocaleUpperCase('pt-BR')
 }
+
+// Mensagem do servidor como frase: "E-mail ou senha incorretos" -> "E-mail ou senha incorretos."
+export function sentence(text: string): string {
+  const t = text.trim()
+  return /[.!?…]$/.test(t) ? t : `${t}.`
+}

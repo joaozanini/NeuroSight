@@ -11,3 +11,7 @@ imageio>=2.34
 imageio-ffmpeg>=0.5
 requests>=2.31
 psycopg[binary]>=3.1   # driver do PostgreSQL (usado quando QUESTPRO_DB_URL aponta p/ Postgres)
+argon2-cffi>=23.1      # hash das senhas
+PyJWT>=2.8             # sessão do site (cookie httpOnly com JWT)
+email-validator>=2.1   # validação de e-mail dos schemas (EmailStr)
+tzdata>=2024.1         # fusos horários do CSV da auditoria (a imagem slim pode não ter)

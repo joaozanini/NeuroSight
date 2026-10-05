@@ -13,6 +13,7 @@ import {
   formatSeconds,
   initials,
   plural,
+  sentence,
   toDate,
 } from './format'
 
@@ -71,5 +72,12 @@ describe('números', () => {
     expect(initials('Ana Souza')).toBe('AS')
     expect(initials('  carlos   de lima ')).toBe('CL')
     expect(initials('Igor')).toBe('I')
+  })
+})
+
+describe('frases', () => {
+  it('termina a mensagem com ponto só quando falta', () => {
+    expect(sentence('E-mail ou senha incorretos')).toBe('E-mail ou senha incorretos.')
+    expect(sentence('Muitas tentativas. Espere.')).toBe('Muitas tentativas. Espere.')
   })
 })

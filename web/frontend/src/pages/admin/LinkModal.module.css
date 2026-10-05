@@ -1,0 +1,22 @@
+.text {
+  font-size: var(--font-size-md);
+  line-height: 24px;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.field {
+  flex: 1;
+}
+
+.hint {
+  margin-top: 8px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}

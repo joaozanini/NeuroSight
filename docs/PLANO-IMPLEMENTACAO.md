@@ -9,7 +9,7 @@
 | Fase | Situação | Branch / commit | Observações |
 |---|---|---|---|
 | 0 Base técnica | concluída | `fase-0-base-tecnica` (`690ed32` backend, `d9269a4` frontend) | Ver as notas da Fase 0 abaixo. |
-| 1 Contas, permissões e auditoria | não iniciada | | |
+| 1 Contas, permissões e auditoria | concluída | `fase-1-contas` (`0c472a9` backend, `6141467` frontend) | Ver as notas da Fase 1 abaixo. |
 | 2 Pacientes e estímulos | não iniciada | | |
 | 3 Configuração de sessões | não iniciada | | |
 | 4 Execução ao vivo + simulador | não iniciada | | |
@@ -40,11 +40,33 @@
   `npm run dev`) mostra todos com os textos dos protótipos.
 - As rotas antigas de leitura (`GET`/`DELETE /api/v1/sessions`) continuam, sem tela.
 
+### Notas da Fase 1 (para as próximas sessões)
+- **Proteger uma rota**: `user: CurrentUser` (só login) ou `Depends(require_permission("patients.view"))`,
+  ambos em `app/security.py`. Os 12 ids ficam em `app/services/permissions.py` (e no tipo
+  `Permission` de `src/api/auth.ts`); a matriz é lida do banco a cada request.
+- **Auditar**: `audit.record(db, request, user, action, entity_type, label, entity_id, changes)` na
+  mesma transação da mudança, com `audit.diff(antes, depois, rótulos)` sobre valores já legíveis
+  (veja `accounts.snapshot`). Ações e tipos de item ficam em `app/services/audit.py` e já incluem
+  os das próximas fases (`visibility_change`, `session_start`, `session_end`, `export`; `session`,
+  `patient`, `stimulus`). O "Abrir …" da W23 sai de `ENTITY_LINKS` em `src/pages/admin/auditLabels.ts`.
+- **Datas**: colunas novas usam `UtcDateTime` (`app/models/base.py`), que devolve sempre com fuso.
+- **Front**: `useCurrentUser()` e `hasPermission(me, ...)` em `src/api/auth.ts`; rotas com permissão
+  via `guarded(...)` no `App.tsx` (mostra "Sem acesso"). Tudo dentro de `RequireAuth`, que leva ao
+  login com `?next=`. Erro de formulário inteiro: `FormAlert`.
+- **Testes**: no backend, `tests/accounts.py` (`make_user`, `login`, `admin`, `researcher`,
+  `audit_entries`); o banco é recriado a cada teste. No front, `mockApi` (`src/test/api.ts`) e os
+  usuários `ADMIN`/`RESEARCHER` (`src/test/fixtures.ts`); toda tela interna precisa de `GET /me`.
+- **Dados de exemplo**: `python -m app.seed --demo` cria os usuários da W19 (senha `NeuroSight#2026`).
+  Para ver e-mails, Mailpit com `QUESTPRO_SMTP_HOST/PORT/SECURITY` (ver `web/README.md`).
+- `sessions_as_owner` (W20) devolve 0 até a Fase 3 ligar as sessões novas.
+
 ### Decisões em aberto
 - **Fluxo antigo (cena 3D)**: a suposição é que ele é substituído e que a tabela `sessions`
   atual vira `legacy_sessions`, só leitura e sem tela. Se os dados antigos puderem ser
   descartados, a tabela sai. **Confirmar com o usuário na Fase 3**, antes de mexer nessa tabela.
 - **Servidor de produção** (domínio, proxy reverso existente): confirmar na Fase 8.
+- **Rotas antigas de leitura** (`GET /api/v1/sessions...`) continuam sem login. Decidir na Fase 3,
+  junto do fluxo antigo, se exigem login ou saem.
 
 ### Registro de desvios
 _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê._
@@ -80,6 +102,40 @@ _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê
   `.venv`) e o `alembic.ini` vai na imagem; o Dockerfile segue com `--workers 2` até a Fase 8. Nos
   docs, só os comandos novos (testes, migrações) no `web/README.md` e uma nota no `DEPLOY.md`; o
   resto fica para a Fase 8.
+- **Fase 1, ações da auditoria**: além das sete da W22, entraram "Envio de convite" (reenvio) e
+  "Redefinição de senha" (link pedido em "Esqueci minha senha" ou enviado pelo admin). Aceitar o
+  convite, redefinir e trocar a senha viram "Edição" do usuário com o campo Senha (sem o valor). A
+  matriz da W21 tem o tipo de item "Permissões", e exportar o CSV da auditoria fica registrado como
+  "Exportação" (item "Sistema"). Registros sem usuário (o `app.seed`) aparecem como "Sistema".
+- **Fase 1, trigger da auditoria** também no SQLite do dev, e no PostgreSQL bloqueia também o
+  TRUNCATE. Por isso os testes recriam o banco a cada teste em vez de apagar linhas.
+- **Fase 1, regras de acesso a mais**: ninguém muda o próprio perfil nem se desativa; o sistema
+  nunca fica sem admin ativo; o JWT leva a `session_version`, então trocar ou redefinir a senha
+  derruba as outras sessões, e desativar derruba de vez (reativar não ressuscita o cookie antigo).
+  Um link novo invalida o anterior do mesmo tipo, desativar invalida os pendentes e reativar quem
+  nunca criou a senha volta para "Convite pendente". Login com limite de 10 falhas em 15 minutos
+  por IP e e-mail (em memória); "Esqueci minha senha" com intervalo de 60 s por conta.
+- **Fase 1, chave do JWT**: `QUESTPRO_SECRET_KEY` ou, sem ela, uma chave gerada uma vez em
+  `<media>/.secret_key` (vale entre reinícios e entre os 2 workers do Docker atual).
+- **Fase 1, links de uso único**: definir a senha pelo convite ou pela redefinição já deixa a
+  pessoa logada. Sem SMTP, o link do "Esqueci minha senha" vai para o log da API. Validade: convite
+  7 dias, redefinição 2 horas (configuráveis).
+- **Fase 1, telas além dos protótipos**: W03 do convite com o mesmo título e o subtítulo "Olá,
+  <nome>. Crie uma senha para começar a usar o sistema."; estado "Link inválido ou expirado";
+  modal "Copie o link do convite/de redefinição" quando o e-mail não sai; página "Sem acesso";
+  na W20, convite pendente mostra "Reenviar convite" no lugar da redefinição, e o status oferece
+  "Convite pendente"/"Inativo". Os filtros da W19 e da W22 ficaram uns 15 px mais largos que no
+  PNG (o Select da Fase 0 reserva 44 px para a seta e o texto cortava). A tabela da W21 aparece
+  inteira (o PNG corta a última linha).
+- **Fase 1, filtros na URL** (`?perfil=&status=&pagina=` na W19, `?periodo=&usuario=&acao=&item=`
+  na W22), para a lista voltar igual. Períodos da W22: Hoje, Últimos 7/30/90 dias e Todo o
+  período, calculados no fuso do navegador. CSV com `;` e BOM (abre direto no Excel), datas no fuso
+  do navegador e células que começam com `=`, `+`, `-` ou `@` escapadas.
+- **Fase 1, extras de infraestrutura**: `pool_pre_ping` no engine (conexão caída depois de
+  reiniciar o PostgreSQL); `tzdata` nas dependências (fusos do CSV na imagem slim).
+- **Fase 1, deploy**: o `docker-compose.yml` não foi mexido (fica para a Fase 8, com o usuário).
+  Até lá ele não repassa `QUESTPRO_SMTP_*` nem `QUESTPRO_PUBLIC_BASE_URL`; o `DEPLOY.md` explica
+  como criar o primeiro admin no servidor.
 
 ---
 

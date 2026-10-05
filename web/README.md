@@ -59,6 +59,21 @@ npm run dev        # http://localhost:5173 (proxy /api -> :8000, inclusive WebSo
 
 No Linux e no macOS os executáveis do venv ficam em `.venv/bin/`.
 
+### Primeiro acesso
+
+O site exige login. O primeiro admin é criado pela linha de comando, em `backend/`, e recebe um
+convite para criar a senha (o link aparece no terminal e vai por e-mail quando há SMTP):
+
+```bash
+.venv\Scripts\python -m app.seed --admin-email voce@lab.br --admin-name "Seu Nome"
+.venv\Scripts\python -m app.seed --demo   # usuários de exemplo dos protótipos (senha NeuroSight#2026)
+```
+
+Sem SMTP, os convites e redefinições que o admin envia pelo site mostram o link para copiar, e o
+"Esqueci minha senha" deixa o link no log da API. Para ver os e-mails no dev, rode o
+[Mailpit](https://mailpit.axllent.org/) e use `QUESTPRO_SMTP_HOST=localhost`,
+`QUESTPRO_SMTP_PORT=1025` e `QUESTPRO_SMTP_SECURITY=none` (veja o `.env.example`).
+
 ### Testes e verificação
 
 ```bash
@@ -66,8 +81,8 @@ cd backend && .venv\Scripts\pytest                          # API, com SQLite te
 cd frontend && npm run typecheck && npm test && npm run build
 ```
 
-Os testes de migração também rodam num PostgreSQL descartável quando
-`NEUROSIGHT_TEST_PG_URL` aponta para ele. Com o `npm run dev` no ar,
+Os testes de migração (inclusive a trigger que impede alterar ou apagar a auditoria) também
+rodam num PostgreSQL descartável quando `NEUROSIGHT_TEST_PG_URL` aponta para ele. Com o `npm run dev` no ar,
 `http://localhost:5173/dev/componentes` mostra a vitrine dos componentes de base (só no modo dev).
 
 ### Banco e migrações

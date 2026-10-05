@@ -1,0 +1,50 @@
+.toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.search {
+  flex: 0 1 340px;
+}
+
+.roleFilter {
+  flex: 0 0 184px;
+}
+
+.statusFilter {
+  flex: 0 0 204px;
+}
+
+.newButton {
+  margin-left: auto;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.email {
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+  white-space: nowrap;
+}

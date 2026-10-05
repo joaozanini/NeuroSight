@@ -9,7 +9,7 @@ interface CardProps extends Omit<HTMLAttributes<HTMLElement>, 'title'> {
   actions?: ReactNode
   // md: 24 px; lg: 28 px (cartões de formulário do assistente); none: o conteúdo cuida do espaço.
   padding?: 'none' | 'md' | 'lg'
-  as?: 'section' | 'div' | 'article'
+  as?: 'section' | 'div' | 'article' | 'aside'
 }
 
 export default function Card({
