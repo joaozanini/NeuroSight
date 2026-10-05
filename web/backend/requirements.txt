@@ -1,0 +1,12 @@
+fastapi>=0.111
+uvicorn[standard]>=0.30
+SQLAlchemy>=2.0
+pydantic>=2.7
+pydantic-settings>=2.3
+python-multipart>=0.0.9
+numpy>=1.26
+opencv-python-headless>=4.9
+imageio>=2.34
+imageio-ffmpeg>=0.5
+requests>=2.31
+psycopg[binary]>=3.1   # driver do PostgreSQL (usado quando QUESTPRO_DB_URL aponta p/ Postgres)

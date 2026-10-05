@@ -1,0 +1,40 @@
+# Stack completo para o SERVIDOR: PostgreSQL + API/site num container.
+#   1) copie .env.example para .env e defina QUESTPRO_API_KEY e QUESTPRO_DB_PASSWORD
+#   2) docker compose up -d --build
+#   3) site + API em http://<ip-do-servidor>:${QUESTPRO_HTTP_PORT:-8000}
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: questpro
+      POSTGRES_PASSWORD: ${QUESTPRO_DB_PASSWORD:-questpro}
+      POSTGRES_DB: questpro
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U questpro"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # sem "ports": o Postgres fica acessível só dentro da rede do compose (mais seguro).
+    # p/ debugar de fora, descomente:
+    # ports: ["5432:5432"]
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      QUESTPRO_DB_URL: postgresql+psycopg://questpro:${QUESTPRO_DB_PASSWORD:-questpro}@db:5432/questpro
+      QUESTPRO_API_KEY: ${QUESTPRO_API_KEY:-}
+    volumes:
+      - media:/data/media
+    ports:
+      - "${QUESTPRO_HTTP_PORT:-8000}:8000"
+
+volumes:
+  pgdata:
+  media:

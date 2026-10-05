@@ -1,0 +1,1 @@
+# Rotas HTTP (ingestão + leitura).
