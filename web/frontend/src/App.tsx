@@ -9,7 +9,7 @@ import AppLayout from './layouts/AppLayout'
 import AuthLayout from './layouts/AuthLayout'
 import FullscreenLayout from './layouts/FullscreenLayout'
 import NotFoundPage from './pages/NotFoundPage'
-import PlaceholderPage from './pages/PlaceholderPage'
+import HomePage from './pages/home/HomePage'
 import ProfilePage from './pages/ProfilePage'
 import AdminLayout, { AdminIndex } from './pages/admin/AdminLayout'
 import AuditPage from './pages/admin/AuditPage'
@@ -30,7 +30,6 @@ import StimulusDetailPage from './pages/stimuli/StimulusDetailPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import SetPasswordPage from './pages/auth/SetPasswordPage'
-import { APP_SCREENS } from './routes'
 
 // Vitrine dos componentes, só no `npm run dev` (fica fora do build de produção).
 const ComponentsPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/ComponentsPage')) : null
@@ -57,9 +56,7 @@ export default function App() {
         </Route>
 
         <Route element={<AppLayout />}>
-          {APP_SCREENS.map((screen) => (
-            <Route key={screen.path} path={screen.path} element={<PlaceholderPage screen={screen} />} />
-          ))}
+          <Route path="/" element={<HomePage />} />
           <Route path="/perfil" element={<ProfilePage />} />
 
           <Route path="/pacientes" element={guarded('patients.view', <PatientsPage />)} />
