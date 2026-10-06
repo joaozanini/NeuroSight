@@ -1,0 +1,236 @@
+/* W17, medida no PNG: tira de miniaturas de 79 × 52, duas colunas como na W16 (estímulo e gravação)
+   e o gráfico de expressões na largura inteira. Os cartões desta tela têm 16 px de respiro e textos
+   menores que os da W16: títulos de 18 px, apoio de 15 px, rótulos de 14 px e valores de 22 px. */
+.strip {
+  margin-bottom: 28px;
+}
+
+.stripLabel {
+  margin-bottom: 12px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 22px;
+}
+
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.thumbButton {
+  position: relative;
+  flex: 0 0 79px;
+  width: 79px;
+  padding: 3px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.thumbButton:hover {
+  border-color: var(--color-primary-ring);
+}
+
+.thumbButton:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.thumbSelected,
+.thumbSelected:hover {
+  border-color: var(--color-primary);
+}
+
+.thumb {
+  width: 100%;
+  border-radius: 7px;
+}
+
+.thumb svg {
+  width: 18px;
+  height: 18px;
+}
+
+.thumbNumber {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.thumbSelected .thumbNumber {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 24px;
+}
+
+.card {
+  padding: 16px;
+}
+
+.cardTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: 26px;
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+}
+
+.exposureHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.exposureTime {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 22px;
+}
+
+.legendBar {
+  flex: 0 0 120px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+  padding-top: 12px;
+}
+
+.metrics dt {
+  max-width: 160px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 17px;
+}
+
+.metrics dd {
+  margin: 4px 0 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 30px;
+}
+
+.recordingCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.caption {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-hint);
+  line-height: 21px;
+}
+
+.noRecording {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 10;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.expressions {
+  padding: 22px 24px 18px;
+}
+
+.expressionsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 12px;
+}
+
+.expressionsText {
+  max-width: 640px;
+}
+
+.expressionsText .cardTitle {
+  margin-bottom: 4px;
+}
+
+.seriesLegend {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 1px;
+  margin: -6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+}
+
+.seriesLegend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.noFace {
+  padding: 24px 0 8px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

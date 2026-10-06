@@ -54,9 +54,14 @@ function session(extra: Partial<SessionDetail> = {}): SessionDetail {
     duration_seconds: null,
     items: ITEMS,
     duplicated_from: null,
+    data_status: 'none',
+    data_error: null,
+    exposures: [],
+    files: null,
     can_edit: true,
     can_run: true,
     can_change_visibility: false,
+    can_export: true,
     ...extra,
   }
 }

@@ -1,4 +1,5 @@
-/* W16: resumo em seis colunas, informações e a sequência. */
+/* W16: resumo em seis colunas, informações e, com os dados coletados, os estímulos exibidos ao lado
+   das marcações e dos arquivos (antes deles, a sequência). */
 .summary {
   margin-bottom: 24px;
 }
@@ -24,7 +25,24 @@
 }
 
 .info {
-  margin-bottom: 40px;
+  margin-bottom: 24px;
+}
+
+.data {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.sideColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sequence {
+  margin-top: 16px;
 }
 
 .infoList {
@@ -115,5 +133,9 @@
 @media (max-width: 1100px) {
   .summaryList {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .data {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -110,6 +110,8 @@ function LiveControl({ session }: { session: SessionDetail }) {
   const status = snapshot?.status
   useEffect(() => {
     if (status !== 'awaiting_data' && status !== 'completed' && status !== 'interrupted') return
+    // A W16 abre já com o status novo (e o aviso dos dados), sem piscar o "Em andamento" do cache.
+    queryClient.setQueryData<SessionDetail>(sessionsKeys.detail(session.id), (old) => old && { ...old, status })
     queryClient.invalidateQueries({ queryKey: sessionsKeys.all })
     toast.success(
       interruptedHere.current

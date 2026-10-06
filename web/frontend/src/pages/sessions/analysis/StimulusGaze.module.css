@@ -1,0 +1,57 @@
+/* O estímulo (inteiro, na proporção dele) com o mapa de calor ou a trajetória por cima. */
+.stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-thumbnail);
+}
+
+.media,
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.media {
+  object-fit: contain;
+}
+
+.overlay {
+  pointer-events: none;
+}
+
+.pathLine {
+  fill: none;
+  stroke: rgba(45, 73, 214, 0.75);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.fixation circle {
+  fill: rgba(59, 91, 240, 0.78);
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.fixation text {
+  fill: #ffffff;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  text-anchor: middle;
+}
+
+.empty {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--color-media-badge);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}

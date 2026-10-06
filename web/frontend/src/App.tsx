@@ -22,6 +22,7 @@ import PatientsPage from './pages/patients/PatientsPage'
 import NewSessionPage from './pages/sessions/NewSessionPage'
 import SessionDetailPage from './pages/sessions/SessionDetailPage'
 import SessionsPage from './pages/sessions/SessionsPage'
+import SessionAnalysisPage from './pages/sessions/analysis/SessionAnalysisPage'
 import LiveControlPage from './pages/sessions/live/LiveControlPage'
 import PrepareSessionPage from './pages/sessions/live/PrepareSessionPage'
 import StimuliPage from './pages/stimuli/StimuliPage'
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/sessoes/nova" element={guarded('sessions.run', <NewSessionPage />)} />
           <Route path="/sessoes/:sessionId" element={<SessionDetailPage />} />
           <Route path="/sessoes/:sessionId/preparar" element={guarded('sessions.run', <PrepareSessionPage />)} />
+          <Route path="/sessoes/:sessionId/analise" element={<SessionAnalysisPage />} />
           <Route path="/estimulos" element={<StimuliPage />} />
           <Route path="/estimulos/:stimulusId" element={<StimulusDetailPage />} />
 

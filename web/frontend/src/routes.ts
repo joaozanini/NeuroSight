@@ -15,17 +15,8 @@ export interface ScreenRoute {
 // Telas internas, no AppLayout (menu lateral).
 export const APP_SCREENS: ScreenRoute[] = [
   { path: '/', title: 'Início', prototypes: ['W04'], phase: 6 },
-
-  {
-    path: '/sessoes/:sessionId/analise',
-    title: 'Análise da sessão',
-    prototypes: ['W17'],
-    phase: 5,
-    back: { to: '/sessoes/:sessionId', label: 'Detalhes da sessão' },
-  },
 ]
 
 export const PHASE_NAMES: Record<number, string> = {
-  5: 'Ingestão e análise',
   6: 'Início',
 }
