@@ -106,8 +106,21 @@ alembic revision --autogenerate -m "descrição"  # nova migração a partir dos
 
 ### Testar sem o óculos
 
-O simulador do óculos (`scripts/device_simulator.py`) chega na Fase 4. Até lá, `python -m app.seed
---demo` cria usuários, pacientes, estímulos e sessões de exemplo.
+`python -m app.seed --demo` cria usuários, pacientes, estímulos e sessões de exemplo, e o
+`scripts/device_simulator.py` faz o papel do óculos, com o protocolo de
+[`docs/protocolo-oculos.md`](../docs/protocolo-oculos.md): mostra o nome e o código de pareamento,
+baixa os estímulos quando o site prepara a sessão (W14), obedece aos comandos da W15 e gera olhar e
+expressões sintéticos. O B é o Enter; depois dele o simulador envia o JSON e a gravação.
+
+```bash
+cd backend
+.venv/bin/python ../scripts/device_simulator.py                       # API em http://localhost:8000
+.venv/bin/python ../scripts/device_simulator.py --auto-end 60 --once  # aperta o B sozinho e sai
+.venv/bin/python ../scripts/device_simulator.py --help                # nome, chave, sem facial, --truth...
+```
+
+Com `QUESTPRO_DEVICE_KEY` definida no servidor, passe a mesma chave em `--key`. O hub da execução ao
+vivo fica em memória: a API precisa rodar com **um** worker.
 
 ## API
 
@@ -123,6 +136,23 @@ visibilidade da sessão deixa):
 | PATCH | `/api/v1/sessions/{id}` | edita título, objetivo, observações e gravação |
 | GET | `/api/v1/sessions/{id}/share-candidates` | pesquisadores para a W18 |
 | PUT | `/api/v1/sessions/{id}/visibility` | muda a visibilidade (W18) |
+
+Execução ao vivo (Fase 4; preparar, iniciar, controlar, interromper e marcar exigem "Criar e
+executar sessões" e ser o responsável):
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/v1/devices/nearby` | óculos conectados com o mesmo IP do navegador (W14) |
+| POST | `/api/v1/sessions/{id}/prepare` | vincula o óculos (`device_id` ou `pairing_code`) e manda a sessão |
+| POST | `/api/v1/sessions/{id}/release` | "Cancelar" da W14 |
+| POST | `/api/v1/sessions/{id}/start` | Configurada → Em andamento (auditado) |
+| POST | `/api/v1/sessions/{id}/control` | próximo, anterior, ir para N, tela neutra, pausar, retomar |
+| POST | `/api/v1/sessions/{id}/interrupt` | Em andamento → Aguardando dados (auditado) |
+| GET/POST | `/api/v1/sessions/{id}/markers` | marcações da W15 |
+| GET/WS | `/api/v1/sessions/{id}/live` | retrato da sessão ao vivo (o WebSocket manda a cada mudança) |
+
+O óculos usa o WebSocket `/api/v1/device/ws` e as rotas `/api/v1/device/...`, descritos em
+[`docs/protocolo-oculos.md`](../docs/protocolo-oculos.md).
 
 Sessões do fluxo antigo, só leitura (🔒 = com `QUESTPRO_API_KEY` definida, exige o login do site
 ou o header `X-Api-Key`):

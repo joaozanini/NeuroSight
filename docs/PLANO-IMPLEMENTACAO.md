@@ -12,7 +12,7 @@
 | 1 Contas, permissões e auditoria | concluída | `fase-1-contas` (`0c472a9` backend, `6141467` frontend) | Ver as notas da Fase 1 abaixo. |
 | 2 Pacientes e estímulos | concluída | `fase-2-pacientes-estimulos` (`975b223` backend, `e29d8ff` frontend) | Ver as notas da Fase 2 abaixo. |
 | 3 Configuração de sessões | concluída | `fase-3-sessoes` (`5be29c9` backend, `8e79b2c` frontend) | Ver as notas da Fase 3 abaixo. |
-| 4 Execução ao vivo + simulador | não iniciada | | |
+| 4 Execução ao vivo + simulador | concluída | `fase-4-ao-vivo` (`37e1ca8` backend e simulador, `cd33621` frontend) | Ver as notas da Fase 4 abaixo. |
 | 5 Ingestão e análise | não iniciada | | |
 | 6 Início (dashboard) | não iniciada | | |
 | 7 App do óculos (UE 5.5) | não iniciada | | |
@@ -121,6 +121,37 @@
 - **Testes**: `tests/test_sessions.py` (`make_patient`, `make_stimulus`, `create`, `set_session`); no
   front, `src/pages/sessions/SessionPages.test.tsx`. O `test/setup.ts` desliga o `window.scrollTo`.
 - O selo de sessões do menu continua para a Fase 6.
+
+### Notas da Fase 4 (para as próximas sessões)
+- **Protocolo**: `docs/protocolo-oculos.md` (aprovado pelo usuário antes do hub) é o contrato do
+  óculos, do simulador e da Fase 7. Mudou o contrato, mude o documento junto.
+- **Peças**: `services/live_hub.py` (hub em memória, thread-safe; o envio só enfileira na conexão),
+  `services/execution.py` (o `load`, as transições e a auditoria do início e do fim),
+  `routers/live.py` (site) e `routers/device.py` (óculos). Tabela `devices` e, em `sessions`,
+  `device_id` (o óculos que executou; só ele envia os dados) e `data_received_at` (o `complete`).
+- **Onde ficam os dados**: `storage.session_tracking(id)` (`<media>/sessions/<id>/tracking.json`) e
+  `storage.session_frames_dir(id)` (`frames/NNNNNN.jpg`). O JSON é conferido só por cima (`version`
+  2 e `meta.sessionId`); validar o resto, montar o MP4 (`services/video.assemble_mp4` com
+  `frames[]` do JSON) e passar a Concluída ou Interrompida é da Fase 5, a partir do `complete`
+  (`routers/device.complete_upload`, que hoje só grava `data_received_at`). A interrompida termina
+  como Interrompida; o B e a queda, como Concluída (sugestão; `end_reason` diz o motivo).
+- **Simulador**: `--truth arquivo.json` grava as exposições (`on`/`off` em segundos da sessão) e as
+  fixações geradas (`start`, `end`, `duration`, `u`, `v` no estímulo), mais `samples` e
+  `validSamples`, para os testes da Fase 5. Fixações de 200 a 600 ms a mais de 0,12 UV uma da outra
+  (cerca de 7°: o painel tem 2,4 × 1,35 m a 2 m), sacadas de 30 ms, piscadas de 150 ms (inválidas) e
+  latência de 120 a 250 ms até a 1ª fixação. Olhar a 72 Hz, facial a 30 Hz, quadros a 10 fps
+  (`--frame-fps`). A lógica de geração está nas classes `Scanpath` e `Recording` do script.
+- **Retrato ao vivo** (`GET`/`WS /sessions/{id}/live`): status, óculos, `nearby`, carga e o que está na
+  tela, com `version` crescente. No site, `useLiveSession` e `keepNewest` (`src/api/live.ts`); as
+  chaves do React Query ficam em `['live', id]`, fora de `['sessions']`, de propósito.
+- **Para a Fase 6**: o selo do menu conta Em andamento + Aguardando dados; `data_received_at` diz se o
+  óculos já terminou de enviar ("em envio" no KPI do admin).
+- **Testes**: `tests/test_live.py` (o óculos é um WebSocket do TestClient; `sync(ws)` manda um ping e
+  espera o pong para saber que o servidor já tratou o que veio antes; o `conftest` zera o hub). No
+  front, `src/test/socket.ts` (WebSocket falso; `await sockets.push(...)`) e
+  `src/pages/sessions/live/LivePages.test.tsx`.
+- **Docker**: o `Dockerfile` ainda sobe com 2 workers, e o hub exige 1 (Fase 8). O compose já repassa
+  `QUESTPRO_DEVICE_KEY`.
 
 ### Decisões em aberto
 - **Servidor de produção** (domínio, proxy reverso existente): confirmar na Fase 8.
@@ -289,6 +320,52 @@ _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê
   filtros, ordem da W06, assistente completo (arrastar com mouse e teclado), W16 com edição, Bruno sem
   acesso, admin compartilhando pela W18, Bruno com acesso, duplicar + Salvar e preparar, W08, W11,
   W22/W23 e W20.
+- **Fase 4, decisões combinadas com o usuário** (com o protocolo, antes do hub): uma chave só para
+  todos os óculos (`QUESTPRO_DEVICE_KEY`, vazia = aberta no dev), com cada óculos identificado pelo
+  `deviceId` que ele gera e registrado na tabela `devices`; "Iniciar sessão" exige o eye tracking
+  ativo, e o emotion tracking inativo só gera um aviso na W14.
+- **Fase 4, rotas a mais**: `POST /sessions/{id}/release` ("Cancelar" da W14 manda o `unload`) e o
+  retrato da sessão também por `GET /sessions/{id}/live`. O `devices/nearby` ficou em
+  `/devices/nearby` (é do navegador, não da sessão).
+- **Fase 4, retrato com versão**: a resposta de uma rota (ex.: o `prepare`) chegava depois do
+  retrato mais novo vindo do WebSocket e o voltava ("0 de 1" depois de "1 de 1"; achado na
+  verificação no navegador). O retrato ganhou `version` (microssegundos, cresce mesmo se a API
+  reiniciar) e o site fica com o maior.
+- **Fase 4, ciclo e fim**: a sessão começa na tela neutra (o pesquisador escolhe o 1º estímulo, como diz
+  a W14); `previous` no primeiro e `next` depois da tela neutra do fim são ignorados. O fim pelo B
+  fica na auditoria em nome do responsável, com o IP do óculos e o user-agent
+  `NeuroSight/<versão> (<nome>; <modelo>)` ("App NeuroSight no Meta Quest" na W23). O óculos que volta
+  sem a sessão em andamento encerra-a como `disconnected`; o JSON que chega sem o `ended` também
+  encerra (com o `meta.endReason`). O `complete` só grava `data_received_at`: o status segue
+  Aguardando dados até a Fase 5.
+- **Fase 4, W14** (o protótipo é estático): o óculos que aparece na mesma rede é escolhido sozinho,
+  uma vez; sem óculos, o cartão diz "Procurando o óculos / Nenhum óculos nesta rede ainda" e o campo
+  vira "O óculos está em outra rede? Digite o código…"; pareado pelo código, "Pareado pelo código" e
+  "Conectado pelo código de pareamento."; desconectado, selo "Desconectado". Os rastreamentos mostram
+  Ativo, Sem permissão, Indisponível ou Desligado (o eye tracking inativo em vermelho, o facial em
+  laranja). O rodapé muda conforme o que falta ("Aguarde o óculos carregar os estímulos.", "Marque que
+  o óculos está no paciente para iniciar." etc.). Estímulo que não carrega aparece com "Tentar de
+  novo". Cancelar libera o óculos e volta para a W16. Só o responsável (o `can_run`) vê a tela.
+- **Fase 4, W15** (o protótipo é estático): na tela neutra, o cabeçalho diz "Antes do estímulo 1 de N"
+  ou "Depois do estímulo N de M" e a legenda "Tela neutra" (no fim, "Fim da sequência. Aperte o B no
+  óculos para encerrar."); com vídeo pausado o botão vira "Retomar vídeo"; as pílulas mostram "Sem
+  gravação", "Óculos desconectado" (com um aviso e os comandos desligados) e os rastreamentos
+  inativos. Vídeos tocam mudos na prévia, acompanhando a pausa (a sincronia é aproximada). Marcações
+  da mais nova para a mais antiga. "Interromper sessão" pede confirmação num modal. Quando a sessão
+  acaba (B ou interrupção), volta para a W16 com um aviso. Logo só com o traço (`Logo variant="mark"`).
+  A prévia segue a proporção do PNG (1247 × 652).
+- **Fase 4, simulador**: quadros a 10 fps por padrão (`--frame-fps`; o `meta.capture.fps` diz o que foi
+  gravado), facial a 30 Hz, cache dos estímulos e envios pendentes em `~/.neurosight-simulador`.
+- **Fase 4, deploy**: o compose passou a repassar `QUESTPRO_DEVICE_KEY` e o `.env.example` traz as
+  variáveis da captura; o `Dockerfile` continua com 2 workers até a Fase 8 (o `DEPLOY.md` avisa que a
+  execução ao vivo exige 1). Os placeholders de tela cheia saíram (não sobrou nenhum).
+- **Fase 4, verificação**: além dos testes (migrações também num PostgreSQL descartável), o fluxo
+  rodou num Chromium headless contra o build servido pela API (SQLite, `--demo`) com dois simuladores:
+  W14 achando o óculos pela rede e trocando para outro pelo código (o primeiro recebeu o `unload`),
+  carregamento, início, próximo, tela neutra, anterior, clique na sequência, troca automática,
+  marcação e o B (`--auto-end`) levando a Aguardando dados com o envio completo; sessão com vídeo
+  (pausar e retomar) interrompida pelo modal; queda do óculos no meio (W15 "Óculos desconectado") e a
+  volta dele encerrando a sessão como `disconnected`; W22 e W23 com o início e o fim.
 
 ---
 

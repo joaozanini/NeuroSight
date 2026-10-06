@@ -13,6 +13,12 @@ qualquer lugar** e você visualize de qualquer navegador.
 > mais enviar até o app novo (Fase 7), e os passos 5.4 e 6 abaixo ficam sem efeito até lá. As
 > sessões antigas continuam no banco (tabela `legacy_sessions`), só para leitura em
 > `/api/v1/legacy/sessions`. O roteiro completo do deploy é refeito na Fase 8.
+>
+> **Fase 4 (execução ao vivo):** o óculos e o navegador falam pelo servidor por WebSocket, e o hub
+> que liga os dois fica em memória: a execução ao vivo só funciona com **um** worker. O `Dockerfile`
+> ainda sobe com `--workers 2` (a troca, o proxy com WebSocket e TLS são da Fase 8); até lá, para
+> testar no servidor, rode com `--workers 1`. Defina também `QUESTPRO_DEVICE_KEY` no `.env` (a chave
+> que o óculos manda; vazia, qualquer um se conecta como óculos).
 
 ---
 
@@ -99,8 +105,9 @@ curl http://IP-DA-VM:8000/healthz
 ```
 Se 5.1 funciona e 5.3 não → é firewall da faculdade (volte ao passo 0.4).
 
-5.4 (ingestão de ponta a ponta): sem efeito desde a Fase 3; volta com o simulador do óculos
-(`scripts/device_simulator.py`, Fase 4).
+5.4 (execução de ponta a ponta): rode o simulador do óculos de qualquer máquina apontando para o
+servidor (`python scripts/device_simulator.py --server http://IP-DA-VM:8000 --key SUA-CHAVE`) e
+prepare uma sessão pelo site (ver `web/README.md`, "Testar sem o óculos").
 
 ## 6. Apontar o app do óculos pro servidor
 
