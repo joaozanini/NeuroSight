@@ -262,6 +262,8 @@ function InfoForm({ stimulus, canEdit, onSaved }: { stimulus: StimulusDetail; ca
 
 function UsedIn({ stimulus }: { stimulus: StimulusDetail }) {
   const count = stimulus.sessions_count
+  // A contagem inclui as sessões que a pessoa não pode ver; a lista, não.
+  const hidden = count - stimulus.sessions.length
   return (
     <section className={styles.used} aria-labelledby="usado-em">
       <h2 id="usado-em" className={styles.heading}>
@@ -280,6 +282,11 @@ function UsedIn({ stimulus }: { stimulus: StimulusDetail }) {
                 </span>
               </li>
             ))}
+            {hidden > 0 && (
+              <li className={styles.sessionMeta}>
+                {hidden === 1 ? 'Mais 1 sessão de outro pesquisador.' : `Mais ${hidden} sessões de outros pesquisadores.`}
+              </li>
+            )}
           </ul>
         </Card>
       ) : (

@@ -314,6 +314,21 @@ describe('W11 Detalhes do estímulo', () => {
     expect(screen.queryByRole('button', { name: 'Excluir estímulo' })).not.toBeInTheDocument()
   })
 
+  it('conta as sessões que a pessoa não vê, sem listá-las', async () => {
+    mockApi({
+      'GET /me': RESEARCHER,
+      'GET /stimuli/:id': {
+        ...MONTANHAS,
+        sessions_count: 3,
+        can_delete: false,
+        sessions: [{ id: 'x1', title: 'Paisagens naturais', patient_code: 'P-009', date: '2026-09-29T14:00:00Z' }],
+      },
+    })
+    renderWithProviders(<App />, { route: '/estimulos/s1' })
+    expect(await screen.findByRole('heading', { name: 'Usado em 3 sessões' })).toBeInTheDocument()
+    expect(screen.getByText('Mais 2 sessões de outros pesquisadores.')).toBeInTheDocument()
+  })
+
   it('sem permissão de edição os campos ficam só para leitura', async () => {
     mockApi({ 'GET /me': { ...RESEARCHER, permissions: ['patients.view'] }, 'GET /stimuli/:id': MONTANHAS })
     renderWithProviders(<App />, { route: '/estimulos/s1' })

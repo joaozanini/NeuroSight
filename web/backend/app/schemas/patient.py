@@ -119,7 +119,7 @@ class ConsentFile(BaseModel):
 
 
 class PatientSession(BaseModel):
-    """Linha do "Histórico de sessões" (W08); as sessões novas chegam na Fase 3."""
+    """Linha do "Histórico de sessões" (W08): só as sessões que a pessoa logada pode ver."""
 
     id: str
     title: str

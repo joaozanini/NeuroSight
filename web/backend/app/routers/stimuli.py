@@ -18,13 +18,14 @@ from sqlalchemy.orm import Session as DbSession
 
 from ..config import settings
 from ..db import get_db
-from ..models import Stimulus, StimulusTag, User
+from ..models import Session, SessionStimulus, Stimulus, StimulusTag, User
 from ..schemas.stimulus import (
-    LibraryCounts, StimulusCard, StimulusDetail, StimulusDraft, StimulusPage, StimulusSave, StimulusStatusChange,
-    StimulusUpdate,
+    LibraryCounts, StimulusCard, StimulusDetail, StimulusDraft, StimulusPage, StimulusSave, StimulusSession,
+    StimulusStatusChange, StimulusUpdate,
 )
 from ..security import CurrentUser, require_permission
 from ..services import audit, media, stimuli
+from ..services import sessions as session_rules
 from ..services.storage import storage
 
 router = APIRouter()
@@ -56,7 +57,18 @@ def _draft(s: Stimulus) -> StimulusDraft:
     )
 
 
-def _detail(db: DbSession, s: Stimulus) -> StimulusDetail:
+def _sessions(db: DbSession, s: Stimulus, user: User) -> list[StimulusSession]:
+    """"Usado em N sessões" (W11): as que a pessoa pode ver, das mais recentes para as mais antigas."""
+    rows = db.scalars(
+        select(Session).join(SessionStimulus, SessionStimulus.session_id == Session.id)
+        .where(SessionStimulus.stimulus_id == s.id, session_rules.visible_to(db, user))
+        .order_by(session_rules.session_date.desc(), Session.created_at.desc())
+    ).all()
+    return [StimulusSession(id=r.id, title=r.title, patient_code=r.patient.code, date=r.started_at or r.created_at)
+            for r in rows]
+
+
+def _detail(db: DbSession, s: Stimulus, user: User) -> StimulusDetail:
     used = stimuli.usage_count(db, s)
     return StimulusDetail(
         id=s.id, name=s.name, description=s.description, kind=s.kind, format=s.format, status=s.status,
@@ -64,8 +76,7 @@ def _detail(db: DbSession, s: Stimulus) -> StimulusDetail:
         duration_seconds=s.duration_seconds, has_audio=s.has_audio, tags=s.tags, created_at=s.created_at,
         created_by_name=s.created_by.name if s.created_by else None, thumbnail_url=_url(s.id, "thumbnail"),
         file_url=_url(s.id, "file"), device_status=s.device_status, device_error=s.device_error,
-        # A lista das sessões chega na Fase 3, com session_stimuli.
-        sessions_count=used, sessions=[], can_delete=used == 0,
+        sessions_count=used, sessions=_sessions(db, s, user) if used else [], can_delete=used == 0,
     )
 
 
@@ -191,7 +202,7 @@ def save_to_library(body: StimulusSave, request: Request, background: Background
 
 @router.get("/stimuli/{stimulus_id}", response_model=StimulusDetail)
 def get_stimulus(stimulus_id: str, user: CurrentUser, db: DbSession = Depends(get_db)):
-    return _detail(db, _visible(db, stimulus_id, user))
+    return _detail(db, _visible(db, stimulus_id, user), user)
 
 
 @router.patch("/stimuli/{stimulus_id}", response_model=StimulusDetail)
@@ -210,7 +221,7 @@ def update_stimulus(stimulus_id: str, body: StimulusUpdate, request: Request, me
         audit.record(db, request, me, "update", "stimulus", s.name, s.id, changes)
         db.commit()
         logger.info("estímulo %s alterado por %s: %s", s.id, me.email, [c["field"] for c in changes])
-    return _detail(db, s)
+    return _detail(db, s, me)
 
 
 @router.put("/stimuli/{stimulus_id}/status", response_model=StimulusDetail)
@@ -226,7 +237,7 @@ def change_status(stimulus_id: str, body: StimulusStatusChange, request: Request
         db.commit()
         logger.info("estímulo %s %s por %s", s.id, "arquivado" if body.status == "archived" else "desarquivado",
                     me.email)
-    return _detail(db, s)
+    return _detail(db, s, me)
 
 
 @router.delete("/stimuli/{stimulus_id}", status_code=204)

@@ -15,7 +15,7 @@ from sqlalchemy import MetaData, create_engine, inspect, insert, select, text
 from sqlalchemy.exc import DBAPIError
 
 from app.db import BASELINE_REVISION, alembic_config, migrate
-from app.models import AuditLog, Base, RolePermission, Session
+from app.models import AuditLog, Base, LegacySession, RolePermission
 from app.services.permissions import DEFAULT_GRANTS
 
 PG_URL = os.environ.get("NEUROSIGHT_TEST_PG_URL")
@@ -32,8 +32,8 @@ def engine(request, tmp_path):
         eng = create_engine(PG_URL)
         with eng.begin() as conn:
             conn.execute(text(
-                "DROP TABLE IF EXISTS stimulus_tags, stimuli, patients, audit_log, role_permissions, auth_tokens, users, "
-                "sessions, alembic_version CASCADE"
+                "DROP TABLE IF EXISTS session_markers, session_shares, session_stimuli, sessions, legacy_sessions, "
+                "stimulus_tags, stimuli, patients, audit_log, role_permissions, auth_tokens, users, alembic_version CASCADE"
             ))
             conn.execute(text("DROP FUNCTION IF EXISTS audit_log_read_only() CASCADE"))
     yield eng
@@ -50,11 +50,18 @@ def current_revision(engine):
         return MigrationContext.configure(conn).get_current_revision()
 
 
+def legacy_table():
+    """A tabela do fluxo antigo com o nome e os índices de antes (`sessions`), sem convenção de nomes."""
+    legacy = MetaData()
+    table = LegacySession.__table__.to_metadata(legacy, name="sessions")
+    for index in table.indexes:
+        index.name = index.name.replace("legacy_sessions", "sessions")
+    return table
+
+
 def create_legacy_schema(engine):
     """O que as versões anteriores faziam ao subir: create_all, sem convenção de nomes nem Alembic."""
-    legacy = MetaData()
-    Session.__table__.to_metadata(legacy)
-    legacy.create_all(engine)
+    legacy_table().metadata.create_all(engine)
 
 
 def test_fresh_database_reaches_head_matching_models(engine):
@@ -72,28 +79,61 @@ def test_migrate_is_idempotent(engine):
 def test_legacy_database_is_stamped_and_keeps_its_rows(engine):
     create_legacy_schema(engine)
     with engine.begin() as conn:
-        conn.execute(insert(Session.__table__).values(
+        conn.execute(insert(legacy_table()).values(
             id="a" * 32, device_session_id="2026-06-17_22-10-54", status="complete",
-            created_at=Session.created_at.default.arg(None),
+            created_at=LegacySession.created_at.default.arg(None),
         ))
 
     migrate(engine)
 
     assert current_revision(engine) == HEAD
     assert schema_diff(engine) == []
+    # As sessões antigas continuam lá, na tabela renomeada.
     with engine.connect() as conn:
-        rows = conn.execute(select(Session.__table__.c.device_session_id)).scalars().all()
+        rows = conn.execute(select(LegacySession.__table__.c.device_session_id)).scalars().all()
     assert rows == ["2026-06-17_22-10-54"]
 
 
 def test_baseline_names_indexes_and_primary_key_like_create_all(engine):
-    migrate(engine)
+    with engine.begin() as conn:
+        command.upgrade(alembic_config(conn), BASELINE_REVISION)
     insp = inspect(engine)
     indexes = {ix["name"]: ix["unique"] for ix in insp.get_indexes("sessions")}
     assert indexes == {"ix_sessions_device_session_id": True, "ix_sessions_status": False}
     if engine.dialect.name == "postgresql":
         # Nome que o PostgreSQL deu à PK no banco criado pelo create_all antigo.
         assert insp.get_pk_constraint("sessions")["name"] == "sessions_pkey"
+
+
+def test_legacy_sessions_keep_their_rows_under_the_new_names(engine):
+    """A 0004 renomeia a tabela antiga com os índices e a PK, e a tabela nova usa os nomes de antes."""
+    with engine.begin() as conn:
+        command.upgrade(alembic_config(conn), "0003_patients_stimuli")
+        conn.execute(insert(legacy_table()).values(
+            id="b" * 32, device_session_id="2026-06-18_09-00-00", status="complete",
+            created_at=LegacySession.created_at.default.arg(None),
+        ))
+    migrate(engine)
+    insp = inspect(engine)
+    indexes = {ix["name"]: ix["unique"] for ix in insp.get_indexes("legacy_sessions")}
+    assert indexes == {"ix_legacy_sessions_device_session_id": True, "ix_legacy_sessions_status": False}
+    assert "ix_sessions_status" in {ix["name"] for ix in insp.get_indexes("sessions")}
+    if engine.dialect.name == "postgresql":
+        assert insp.get_pk_constraint("legacy_sessions")["name"] == "legacy_sessions_pkey"
+        assert insp.get_pk_constraint("sessions")["name"] == "sessions_pkey"
+    with engine.connect() as conn:
+        rows = conn.execute(select(LegacySession.__table__.c.id)).scalars().all()
+    assert rows == ["b" * 32]
+
+    # E volta: o downgrade devolve a tabela antiga com os nomes de antes.
+    with engine.begin() as conn:
+        command.downgrade(alembic_config(conn), "0003_patients_stimuli")
+    insp = inspect(engine)
+    assert "legacy_sessions" not in insp.get_table_names()
+    indexes = {ix["name"]: ix["unique"] for ix in insp.get_indexes("sessions")}
+    assert indexes == {"ix_sessions_device_session_id": True, "ix_sessions_status": False}
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT id FROM sessions")).scalars().all() == ["b" * 32]
 
 
 def test_permission_matrix_is_seeded_with_the_default(engine):

@@ -4,9 +4,8 @@ Site: `get_current_user` lê o cookie, valida o JWT e recarrega o usuário do ba
 então um usuário desativado (ou que trocou a senha em outro lugar) perde o acesso na hora.
 `require_permission(...)` consulta a matriz da W21 também a cada request.
 
-Óculos: os endpoints de escrita do fluxo antigo (ingestão e delete) exigem X-Api-Key quando
-QUESTPRO_API_KEY está definida. A leitura do fluxo antigo aceita a mesma chave ou o login do site.
-Sem a chave configurada, nada disso é exigido (modo dev).
+Fluxo antigo (só leitura, `/legacy/sessions`): com QUESTPRO_API_KEY definida, exige a mesma chave
+no X-Api-Key ou o login do site. Sem a chave configurada fica aberto (modo dev).
 """
 import secrets
 from typing import Annotated
@@ -20,13 +19,6 @@ from .models import User
 from .services import permissions, tokens
 
 NOT_AUTHENTICATED = "não autenticado"
-
-
-def require_api_key(x_api_key: str | None = Header(default=None, alias="X-Api-Key")) -> None:
-    if not settings.api_key:
-        return  # sem chave configurada -> aberto (dev)
-    if not x_api_key or not secrets.compare_digest(x_api_key, settings.api_key):
-        raise HTTPException(status_code=401, detail="X-Api-Key ausente ou inválida")
 
 
 # ---- Sessão do site -------------------------------------------------------------------------
@@ -77,9 +69,9 @@ def require_reader(
     x_api_key: str | None = Header(default=None, alias="X-Api-Key"),
     db: DbSession = Depends(get_db),
 ) -> None:
-    """Leitura do fluxo antigo: quem está logado no site ou o script com a X-Api-Key.
+    """Leitura do fluxo antigo: quem está logado no site ou um script com a X-Api-Key.
 
-    Sem QUESTPRO_API_KEY (dev) fica aberta, como a escrita.
+    Sem QUESTPRO_API_KEY (dev) fica aberta.
     """
     if not settings.api_key:
         return

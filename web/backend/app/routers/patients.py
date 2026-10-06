@@ -20,12 +20,14 @@ from sqlalchemy.orm import Session as DbSession
 
 from ..config import settings
 from ..db import get_db
-from ..models import Patient, User
+from ..models import Patient, Session, SessionStimulus, User
 from ..schemas.patient import (
-    ConsentFile, NextCode, PatientCounts, PatientDetail, PatientInput, PatientPage, PatientRow, StatusChange,
+    ConsentFile, NextCode, PatientCounts, PatientDetail, PatientInput, PatientPage, PatientRow, PatientSession,
+    StatusChange,
 )
 from ..security import require_permission
 from ..services import audit, patients
+from ..services import sessions as session_rules
 from ..services.storage import storage
 
 router = APIRouter()
@@ -55,17 +57,35 @@ def _get(db: DbSession, patient_id: str) -> Patient:
     return patient
 
 
-def _detail(patient: Patient) -> PatientDetail:
+def _sessions(db: DbSession, patient: Patient, user: User | None) -> list[PatientSession]:
+    """"Histórico de sessões" (W08): as que a pessoa pode ver, das mais recentes para as mais antigas."""
+    counts = (
+        select(SessionStimulus.session_id, func.count().label("n")).group_by(SessionStimulus.session_id).subquery()
+    )
+    rows = db.execute(
+        select(Session, func.coalesce(counts.c.n, 0))
+        .outerjoin(counts, counts.c.session_id == Session.id)
+        .where(Session.patient_id == patient.id, session_rules.visible_to(db, user))
+        .order_by(session_rules.session_date.desc(), Session.created_at.desc())
+    ).all()
+    return [
+        PatientSession(id=s.id, title=s.title, date=s.started_at or s.created_at, owner_name=s.owner.name,
+                       stimuli_count=n, status=s.status)
+        for s, n in rows
+    ]
+
+
+def _detail(db: DbSession, patient: Patient, user: User | None) -> PatientDetail:
     consent = None
     if patient.consent_file_key:
         consent = ConsentFile(name=patient.consent_file_name or "termo.pdf", size=patient.consent_file_size or 0)
+    history = _sessions(db, patient, user)
     return PatientDetail(
         id=patient.id, code=patient.code, name=patient.name, birth_date=patient.birth_date, sex=patient.sex,
         vision_correction=patient.vision_correction, consent_signed=patient.consent_signed,
         consent_date=patient.consent_date, consent_file=consent, notes=patient.notes, status=patient.status,
         created_at=patient.created_at, created_by_name=patient.created_by.name if patient.created_by else None,
-        # As sessões novas chegam na Fase 3.
-        sessions_count=0, sessions=[],
+        sessions_count=len(history), sessions=history,
     )
 
 
@@ -123,9 +143,10 @@ def list_patients(
     include_inactive: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(8, ge=1, le=100),
-    _: User = Depends(ViewPatients),
+    user: User = Depends(ViewPatients),
     db: DbSession = Depends(get_db),
 ):
+    """W06 (e etapa 1 da W13). Contagem e última sessão consideram só as sessões que a pessoa vê."""
     filters = []
     if not include_inactive:
         filters.append(Patient.status == "active")
@@ -134,12 +155,26 @@ def list_patients(
         filters.append(or_(Patient.name.icontains(term, autoescape=True), Patient.code.icontains(term, autoescape=True)))
 
     total = db.scalar(select(func.count()).select_from(Patient).where(*filters)) or 0
-    # Inativos por último; depois os mais recentes. A Fase 3 põe na frente quem teve sessão por último.
-    order = (case((Patient.status == "inactive", 1), else_=0), Patient.created_at.desc(), Patient.code.desc())
-    rows = db.scalars(select(Patient).where(*filters).order_by(*order).limit(page_size).offset((page - 1) * page_size))
+    history = (
+        select(Session.patient_id, func.count().label("n"), func.max(session_rules.session_date).label("last"))
+        .where(session_rules.visible_to(db, user)).group_by(Session.patient_id).subquery()
+    )
+    # Inativos por último; antes, o movimento mais recente: a última sessão ou, sem sessão depois
+    # dele, o cadastro (quem acabou de ser cadastrado aparece no topo, como na W13).
+    activity = case((history.c.last > Patient.created_at, history.c.last), else_=Patient.created_at)
+    order = (case((Patient.status == "inactive", 1), else_=0), activity.desc(), Patient.code.desc())
+    rows = db.execute(
+        select(Patient, history.c.n, history.c.last).outerjoin(history, history.c.patient_id == Patient.id)
+        .where(*filters).order_by(*order).limit(page_size).offset((page - 1) * page_size)
+    ).all()
     counts = dict(db.execute(select(Patient.status, func.count()).group_by(Patient.status)).all())
     return PatientPage(
-        items=[PatientRow.model_validate(p) for p in rows], total=total, page=page, page_size=page_size,
+        items=[
+            PatientRow(id=p.id, code=p.code, name=p.name, birth_date=p.birth_date, status=p.status,
+                       sessions_count=n or 0, last_session_at=last)
+            for p, n, last in rows
+        ],
+        total=total, page=page, page_size=page_size,
         counts=PatientCounts(active=counts.get("active", 0), inactive=counts.get("inactive", 0)),
     )
 
@@ -171,12 +206,12 @@ def create_patient(
     _commit(db, new_key)
     db.refresh(patient)
     logger.info("paciente %s cadastrado por %s", patient.code, me.email)
-    return _detail(patient)
+    return _detail(db, patient, me)
 
 
 @router.get("/patients/{patient_id}", response_model=PatientDetail)
-def get_patient(patient_id: str, _: User = Depends(ViewPatients), db: DbSession = Depends(get_db)):
-    return _detail(_get(db, patient_id))
+def get_patient(patient_id: str, user: User = Depends(ViewPatients), db: DbSession = Depends(get_db)):
+    return _detail(db, _get(db, patient_id), user)
 
 
 @router.put("/patients/{patient_id}", response_model=PatientDetail)
@@ -218,7 +253,7 @@ def update_patient(
         if old_key and old_key != patient.consent_file_key:
             storage.delete_file(old_key)
         logger.info("paciente %s alterado por %s: %s", patient.code, me.email, [c["field"] for c in changes])
-    return _detail(patient)
+    return _detail(db, patient, me)
 
 
 @router.put("/patients/{patient_id}/status", response_model=PatientDetail)
@@ -234,7 +269,7 @@ def change_status(patient_id: str, body: StatusChange, request: Request, me: Use
         db.commit()
         logger.info("paciente %s %s por %s", patient.code, "inativado" if body.status == "inactive" else "reativado",
                     me.email)
-    return _detail(patient)
+    return _detail(db, patient, me)
 
 
 @router.get("/patients/{patient_id}/consent")

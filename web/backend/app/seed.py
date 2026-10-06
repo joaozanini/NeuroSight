@@ -2,7 +2,7 @@
 o primeiro admin, mostrando o link do convite.
 
     python -m app.seed --admin-email ana@lab.br --admin-name "Ana Souza"
-    python -m app.seed --demo        # também cria usuários, pacientes e estímulos de exemplo
+    python -m app.seed --demo        # também cria usuários, pacientes, estímulos e sessões de exemplo
 
 Pode rodar de novo sem estragar nada: o que já existe fica como está. Rodar com o e-mail de um
 admin que ainda não aceitou o convite gera um link novo (o anterior deixa de valer).
@@ -11,7 +11,7 @@ import argparse
 import io
 import sys
 import tempfile
-from datetime import date
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import select
@@ -19,9 +19,10 @@ from sqlalchemy.orm import Session as DbSession
 
 from . import seed_media
 from .db import SessionLocal, migrate
-from .models import Patient, Stimulus, User, utcnow
+from .models import Patient, Session, SessionShare, SessionStimulus, Stimulus, User, utcnow
 from .services import accounts, audit, passwords, permissions, tokens
 from .services import patients as patient_rules
+from .services import sessions as session_rules
 from .services import stimuli as stimulus_rules
 
 DEMO_PASSWORD = "NeuroSight#2026"
@@ -59,6 +60,56 @@ DEMO_PATIENTS = [
     ("P-014", "Mariana Alves", "1998-03-12", "female", "glasses", "2026-09-01", "Prefere sessões no período da manhã."),
     ("P-015", "Beatriz Carvalho", "1995-07-21", "female", "none", "2026-09-02", None),
 ]
+
+
+# Sessões da W12 (as 23 que Ana Souza vê nos últimos 30 dias, com as contagens da W06) e mais três
+# que só o admin vê. As datas são relativas a hoje: "dias atrás" 0 é a sessão em andamento.
+ANA, BRUNO, DANIELA = "ana.souza@exemplo.com", "bruno.castro@exemplo.com", "daniela.rocha@exemplo.com"
+DEMO_SESSIONS = [
+    # dias atrás, título, paciente, responsável, status, visibilidade, compartilhada com, sequência
+    (0, "Rostos neutros e expressivos", "P-014", ANA, "running", "private", (), "rostos"),
+    (0, "Paisagens naturais", "P-009", ANA, "awaiting_data", "private", (), "paisagens"),
+    (1, "Rostos neutros e expressivos", "P-015", ANA, "configured", "private", (), "rostos"),
+    (4, "Publicidade em vídeo", "P-011", BRUNO, "interrupted", "shared", (ANA,), "videos"),
+    (5, "Leitura de textos curtos", "P-007", BRUNO, "completed", "all", (), "leitura"),
+    (7, "Imagens de alimentos", "P-012", ANA, "completed", "shared", (BRUNO,), "alimentos"),
+    (11, "Rostos neutros e expressivos", "P-010", ANA, "completed", "private", (), "rostos"),
+    (14, "Paisagens naturais", "P-008", ANA, "interrupted", "private", (), "paisagens"),
+    (16, "Rostos neutros e expressivos", "P-014", ANA, "completed", "private", (), "rostos"),
+    (17, "Imagens de alimentos", "P-001", ANA, "completed", "private", (), "alimentos"),
+    (19, "Paisagens naturais", "P-014", ANA, "completed", "private", (), "paisagens"),
+    (20, "Imagens de alimentos", "P-009", ANA, "completed", "private", (), "alimentos"),
+    (21, "Leitura de textos curtos", "P-007", BRUNO, "completed", "all", (), "leitura"),
+    (22, "Paisagens naturais", "P-002", ANA, "completed", "private", (), "paisagens"),
+    (23, "Paisagens naturais", "P-010", ANA, "completed", "private", (), "paisagens"),
+    (24, "Rostos neutros e expressivos", "P-002", ANA, "completed", "private", (), "rostos"),
+    (25, "Rostos neutros e expressivos", "P-006", ANA, "completed", "private", (), "rostos"),
+    (26, "Paisagens naturais", "P-006", ANA, "completed", "private", (), "paisagens"),
+    (27, "Rostos neutros e expressivos", "P-005", ANA, "interrupted", "private", (), "rostos"),
+    (28, "Imagens de alimentos", "P-005", ANA, "completed", "private", (), "alimentos"),
+    (28, "Publicidade em vídeo", "P-003", BRUNO, "completed", "all", (), "videos"),
+    (29, "Paisagens naturais", "P-004", ANA, "completed", "private", (), "paisagens"),
+    (29, "Rostos neutros e expressivos", "P-004", ANA, "completed", "private", (), "rostos"),
+    (2, "Publicidade em vídeo", "P-003", BRUNO, "configured", "private", (), "videos"),
+    (6, "Rostos neutros e expressivos", "P-001", DANIELA, "completed", "private", (), "rostos"),
+    (9, "Paisagens naturais", "P-006", DANIELA, "awaiting_data", "private", (), "paisagens"),
+]
+# Sequências: (nome do estímulo, segundos na tela); vídeos e trocas manuais levam None.
+DEMO_SEQUENCES = {
+    "rostos": [(f"{label} {i:02d}", 5.0) for i in range(1, 13) for _, label, _ in [seed_media.EXPRESSIONS[(i - 1) % 3]]],
+    "paisagens": [("Montanhas ao amanhecer", 8.0), ("Lago e floresta", 8.0), ("Ondas na praia", None),
+                  ("Floresta com vento", None)],
+    "videos": [("Ondas na praia", None), ("Floresta com vento", None)],
+    "leitura": [("Montanhas ao amanhecer", 10.0), ("Lago e floresta", 10.0)],
+    "alimentos": [("Frutas sobre a mesa", None), ("Montanhas ao amanhecer", 6.0)],
+}
+DEMO_OBJECTIVES = {
+    "rostos": "Comparar o tempo de fixação e as expressões faciais diante de rostos neutros, alegres e surpresos.",
+    "paisagens": "Observar a exploração visual de paisagens estáticas e em movimento.",
+    "videos": "Medir a atenção a vídeos curtos, como em uma peça publicitária.",
+    "leitura": "Acompanhar o percurso do olhar durante a leitura de imagens com detalhes finos.",
+    "alimentos": "Comparar a atenção a imagens de alimentos com a de paisagens.",
+}
 
 
 def _create(db: DbSession, name: str, email: str, role: str, status: str, password: str | None,
@@ -118,10 +169,12 @@ def seed_demo_patients(db: DbSession, actor: User | None) -> None:
     for code, name, birth, sex, vision, signed_on, notes in DEMO_PATIENTS:
         if patient_rules.find_by_code(db, code):
             continue
+        # Cadastrado no dia da assinatura do termo, antes das sessões de exemplo.
+        registered_at = datetime.combine(date.fromisoformat(signed_on or "2026-09-03"), time(13), timezone.utc)
         patient = Patient(
             code=code, name=name, birth_date=date.fromisoformat(birth), sex=sex, vision_correction=vision,
             consent_signed=signed_on is not None, consent_date=date.fromisoformat(signed_on) if signed_on else None,
-            notes=notes, status="active", created_by_id=actor.id if actor else None,
+            notes=notes, status="active", created_by_id=actor.id if actor else None, created_at=registered_at,
         )
         db.add(patient)
         db.flush()
@@ -163,11 +216,64 @@ def seed_demo_stimuli(db: DbSession, actor: User | None) -> None:
     print(f"Estímulos de exemplo: {stimulus_rules.batch_label(saved)}.")
 
 
+def seed_demo_sessions(db: DbSession) -> None:
+    """As sessões da W12, com a sequência, a visibilidade e os registros da auditoria.
+
+    As executadas ficam com o status e os horários, sem dados coletados (a ingestão é da Fase 5).
+    """
+    if db.scalar(select(Session.id).limit(1)) is not None:
+        print("Sessões de exemplo: já existem.")
+        return
+    users = {u.email: u for u in db.scalars(select(User))}
+    patients = {p.code: p for p in db.scalars(select(Patient))}
+    stimuli = {s.name: s for s in db.scalars(select(Stimulus).where(Stimulus.status == "active"))}
+    admin = db.scalar(select(User).where(User.role == "admin", User.status == "active").order_by(User.created_at))
+    now = utcnow().replace(second=0, microsecond=0)
+    created = 0
+    for days, title, code, owner_email, status, visibility, shared, sequence in DEMO_SESSIONS:
+        owner, patient = users.get(owner_email), patients.get(code)
+        items = [(stimuli.get(name), seconds) for name, seconds in DEMO_SEQUENCES[sequence]]
+        if owner is None or patient is None or any(s is None for s, _ in items):
+            continue
+        session = Session(
+            title=title, objective=DEMO_OBJECTIVES[sequence], status=status, visibility="private", record=True,
+            patient=patient, owner=owner,
+        )
+        session.items = [
+            SessionStimulus(position=i, stimulus=s, duration_seconds=seconds if s.kind == "image" else None)
+            for i, (s, seconds) in enumerate(items, start=1)
+        ]
+        length = sum(seconds or (s.duration_seconds or 0) for s, seconds in items) + 20
+        if status == "running":
+            session.started_at = now - timedelta(minutes=3)
+        elif status != "configured":
+            session.started_at = now - timedelta(days=days, hours=1 + (days * 5) % 6)
+            session.ended_at = session.started_at + timedelta(seconds=length)
+            session.end_reason = "interrupted" if status == "interrupted" else "button_b"
+        session.created_at = (session.started_at or now) - timedelta(days=1 if session.started_at else days)
+        db.add(session)
+        db.flush()
+        audit.record(db, None, owner, "create", "session", session_rules.audit_label(session), session.id,
+                     audit.diff({}, session_rules.snapshot(session), session_rules.FIELD_LABELS))
+        if visibility != "private":
+            before = session_rules.visibility_snapshot(session)
+            session.visibility = visibility
+            session.shares = [SessionShare(user_id=users[email].id) for email in shared if email in users]
+            db.flush()
+            db.expire(session, ["shares"])
+            audit.record(db, None, admin, "visibility_change", "session", session_rules.audit_label(session),
+                         session.id, audit.diff(before, session_rules.visibility_snapshot(session),
+                                                session_rules.VISIBILITY_FIELD_LABELS))
+        created += 1
+    db.commit()
+    print(f"Sessões de exemplo: {created} criadas.")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.seed", description=__doc__.split("\n\n")[0])
     parser.add_argument("--admin-email", help="e-mail do primeiro admin (recebe o convite)")
     parser.add_argument("--admin-name", default="Administrador", help="nome do primeiro admin")
-    parser.add_argument("--demo", action="store_true", help="cria usuários, pacientes e estímulos de exemplo")
+    parser.add_argument("--demo", action="store_true", help="cria usuários, pacientes, estímulos e sessões de exemplo")
     parser.add_argument("--demo-password", default=DEMO_PASSWORD, help="senha dos usuários de exemplo")
     args = parser.parse_args(argv)
 
@@ -194,6 +300,7 @@ def main(argv: list[str] | None = None) -> int:
                 select(User).where(User.role == "admin").order_by(User.created_at))
             seed_demo_patients(db, actor)
             seed_demo_stimuli(db, actor)
+            seed_demo_sessions(db)
         db.commit()
     print(f"Pronto ({utcnow():%d/%m/%Y %H:%M} UTC).")
     return 0

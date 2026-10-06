@@ -11,7 +11,7 @@
 | 0 Base técnica | concluída | `fase-0-base-tecnica` (`690ed32` backend, `d9269a4` frontend) | Ver as notas da Fase 0 abaixo. |
 | 1 Contas, permissões e auditoria | concluída | `fase-1-contas` (`0c472a9` backend, `6141467` frontend) | Ver as notas da Fase 1 abaixo. |
 | 2 Pacientes e estímulos | concluída | `fase-2-pacientes-estimulos` (`975b223` backend, `e29d8ff` frontend) | Ver as notas da Fase 2 abaixo. |
-| 3 Configuração de sessões | não iniciada | | |
+| 3 Configuração de sessões | concluída | `fase-3-sessoes` (`5be29c9` backend, `8e79b2c` frontend) | Ver as notas da Fase 3 abaixo. |
 | 4 Execução ao vivo + simulador | não iniciada | | |
 | 5 Ingestão e análise | não iniciada | | |
 | 6 Início (dashboard) | não iniciada | | |
@@ -58,8 +58,7 @@
   usuários `ADMIN`/`RESEARCHER` (`src/test/fixtures.ts`); toda tela interna precisa de `GET /me`.
 - **Dados de exemplo**: `python -m app.seed --demo` cria os usuários da W19 (senha `NeuroSight#2026`).
   Para ver e-mails, Mailpit com `QUESTPRO_SMTP_HOST/PORT/SECURITY` (ver `web/README.md`).
-- `sessions_as_owner` (W20) devolve 0: **a Fase 3 precisa ligá-lo** à contagem de sessões novas em
-  que o usuário é o responsável (`_detail` em `app/routers/users.py`).
+- `sessions_as_owner` (W20) conta as sessões em que o usuário é o responsável (ligado na Fase 3).
 
 ### Notas da Fase 2 (para as próximas sessões)
 - **O que a Fase 3 liga**: `sessions_count`, `last_session_at` e `sessions` dos pacientes
@@ -87,10 +86,43 @@
   paisagens, frutas e os vídeos "Ondas na praia" e "Floresta com vento"), desenhados por
   `app/seed_media.py`, em nome de Ana Souza.
 
+### Notas da Fase 3 (para as próximas sessões)
+- **Tabelas** (`app/models/session.py`, migração `0004_sessions`): `sessions` (`type`
+  `media_sequence`, `status`, `end_reason`, `record`, `visibility` `private|shared|all`, `patient_id`,
+  `owner_id`, `duplicated_from_id`, `started_at`, `ended_at`), `session_stimuli` (`position` a partir
+  de 1 e `duration_seconds` só nas imagens; vazio = troca manual; cada estímulo uma vez por sessão),
+  `session_shares` e `session_markers` (`t` em segundos desde o início, `text`, `created_by_id`),
+  esta ainda sem rota. `started_at`, `ended_at` e `end_reason` já existem para a Fase 4 preencher.
+- **Quem vê**: `services/sessions.py` (`visible_clause`, `visible_to`, `can_view`, `session_date` =
+  início ou, antes de executar, a configuração). Sessão que a pessoa não vê responde **404**. Use a
+  mesma regra nas rotas novas (preparar, controle, análise, downloads).
+- **Quem executa**: `can_run` = "Criar e executar sessões" **e** ser o responsável (W12 e W16 só
+  mostram Preparar/Abrir controle nesse caso); a Fase 4 deve exigir o mesmo em `prepare`/`start`.
+  `can_edit` (informações) = "Criar e executar" e (responsável ou "Ver de outros").
+- **Rotas**: `GET /sessions` (`q`, `status`, `owner_id`, `since`, 8 por página), `GET /sessions/owners`,
+  `POST /sessions` (o assistente; aceita `duplicated_from_id`), `GET`/`PATCH /sessions/{id}`,
+  `GET /sessions/{id}/share-candidates` e `PUT /sessions/{id}/visibility`. O nome, o nascimento e o
+  sexo do paciente só vêm para quem tem "Ver pacientes".
+- **Fluxo antigo**: `LegacySession` (`legacy_sessions`), só leitura em `/legacy/sessions` (login ou
+  `X-Api-Key`), sem tela. A ingestão antiga e o `require_api_key` saíram; a chave do dispositivo da
+  Fase 4 é nova. `services/video.py` ficou para a Fase 5. A mídia antiga está em `<media>/<id>/`;
+  para as sessões novas, sugiro `<media>/sessions/<id>/`.
+- **Front**: `src/api/sessions.ts` (com `prepareSessionPath` e `controlSessionPath`, hoje placeholders
+  da Fase 4) e `src/pages/sessions/`. Textos da sequência ("cerca de 1 min", "Vídeo inteiro (0:45)")
+  em `sequence.ts`; o assistente em `wizard/`. `?duplicar=<id>` em `/sessoes/nova` é o "Duplicar
+  para outro paciente". O filtro de período das listas está em `src/lib/periods.ts`.
+- **O que a Fase 5 troca na W16**: o cartão "Sequência da sessão" (largura inteira) dá lugar a
+  "Estímulos exibidos" com as colunas da direita (Marcações, Arquivos), e "N na sequência" no resumo
+  vira "N exibidos". "Analisar dados" já aparece nas Concluídas e Interrompidas.
+- **Dados de exemplo**: `--demo` cria 26 sessões (as 23 que Ana vê nos últimos 30 dias, como na W12,
+  com as contagens da W06, e três só do admin), com datas relativas a hoje. As executadas têm status
+  e horários, **sem dados coletados**: a Fase 5 precisa gerar dados sintéticos para elas ou tratar a
+  falta deles na W16/W17. Os pacientes de exemplo agora são cadastrados na data do TCLE.
+- **Testes**: `tests/test_sessions.py` (`make_patient`, `make_stimulus`, `create`, `set_session`); no
+  front, `src/pages/sessions/SessionPages.test.tsx`. O `test/setup.ts` desliga o `window.scrollTo`.
+- O selo de sessões do menu continua para a Fase 6.
+
 ### Decisões em aberto
-- **Fluxo antigo (cena 3D)**: a suposição é que ele é substituído e que a tabela `sessions`
-  atual vira `legacy_sessions`, só leitura e sem tela. Se os dados antigos puderem ser
-  descartados, a tabela sai. **Confirmar com o usuário na Fase 3**, antes de mexer nessa tabela.
 - **Servidor de produção** (domínio, proxy reverso existente): confirmar na Fase 8.
 
 ### Registro de desvios
@@ -209,6 +241,54 @@ _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê
 - **Fase 2, verificação**: além dos testes, o fluxo da fase rodou num Chromium headless
   (playwright-core numa pasta fora do repositório) contra o build servido pela API sobre PostgreSQL,
   com o `--demo`: W06 a W11, o .mov recusado, a versão para o óculos e os registros na auditoria.
+- **Fase 3, fluxo antigo** (decidido com o usuário no início da fase): a tabela `sessions` virou
+  `legacy_sessions`, com os dados, só leitura e sem tela; as rotas de leitura foram para
+  `/api/v1/legacy/sessions` e o `DELETE` saiu. A ingestão antiga (`POST /sessions`, `/frames`,
+  `/complete`, que ocupava a URL do assistente), o `replay_session.py`, o `make_synthetic_session.py`
+  e `web/synthetic/` também saíram: **o app atual do óculos não consegue enviar até a Fase 7**. O
+  `README`, o `DEPLOY.md` e o README do óculos ganharam avisos; a reescrita fica para a Fase 8.
+- **Fase 3, visibilidade**: a sessão nasce privada e só quem tem "Alterar a visibilidade" a muda (na
+  matriz padrão, só o Admin, como na W21). A lista da W18 traz os usuários ativos menos o responsável
+  e quem já vê todas as sessões (no PNG o admin não aparece); "Pesquisadores escolhidos" exige pelo
+  menos um, e voltar para "Só o responsável" ou "Todos" limpa a lista. A auditoria registra
+  "Visibilidade" e "Pesquisadores com acesso" (nomes).
+- **Fase 3, contagens**: W06, W08 e o "Usado em" da W11 só listam as sessões que a pessoa pode ver. A
+  W11 conta todas (é o que impede a exclusão) e completa com "Mais N sessões de outros
+  pesquisadores."; o paciente aparece só pelo código para quem não tem "Ver pacientes".
+- **Fase 3, ordem dos pacientes** (W06 e etapa 1 da W13): pelo movimento mais recente, a última
+  sessão ou o cadastro, o que for mais novo. Isso concilia os PNGs: na W13 a P-015, recém-cadastrada e
+  sem sessão, vem primeiro; na W06 a ordem é a da última sessão.
+- **Fase 3, W12**: a data é o início da sessão ou, antes de executar, a configuração. O período padrão
+  é "Últimos 30 dias", como no PNG (mesmas opções da W22). "Todos os responsáveis" lista quem tem
+  sessão visível para a pessoa. Preparar e Abrir controle só para o responsável com "Criar e
+  executar"; os outros veem Abrir. Os selects ficaram uns 20 px mais largos que no PNG (o texto
+  cortava, como na W19/W22).
+- **Fase 3, W13** (o protótipo é estático):
+  - etapa 1 com cinco pacientes ativos por vez e a linha "Mais N pacientes. Busque pelo nome ou
+    código para encontrar outro."; com `?paciente=` o assistente abre direto nas Informações;
+  - Título e Objetivo obrigatórios; Observações opcional;
+  - imagem entra com 5 s; o tempo aceita de 0,1 a 3.600 s, com vírgula; vídeos não têm tempo (avançam
+    sozinhos ao terminar). O total diz "cerca de" e, havendo troca manual, "mais de". A linha da
+    revisão segue o PNG ("12 imagens, cerca de 1 min, com troca automática a cada 5 s") e muda para
+    "com troca automática", "com troca manual" ou "com troca automática e manual";
+  - "Nascida em", "Nascido em" ou "Nascimento em" conforme o sexo;
+  - Salvar abre a W16; Salvar e preparar abre a preparação (placeholder até a Fase 4). Voltar,
+    Trocar e Editar guardam o que já foi preenchido, mas sair do assistente descarta tudo;
+  - a sequência também se reordena pelo teclado (espaço, setas, espaço), com anúncios em português.
+- **Fase 3, duplicar**: "Duplicar para outro paciente" reabre o assistente (`?duplicar=`) com título,
+  objetivo, observações, gravação e sequência copiados, um aviso no topo e o paciente a escolher; os
+  estímulos arquivados ficam de fora (o aviso diz quantos). A sessão nova guarda a origem
+  (`duplicated_from_id`, "Duplicada de" na auditoria e "Origem" na W16).
+- **Fase 3, W16 antes dos dados**: "Configurada em" no lugar de "Data e hora", Duração "—", "N na
+  sequência" e um cartão "Sequência da sessão" (Nº, Estímulo, Tipo, Tempo de tela) no lugar dos
+  estímulos exibidos. O botão principal segue o status: Preparar sessão, Abrir controle ou Analisar
+  dados. "Editar informações" edita no próprio cartão o título, o objetivo, as observações e, só
+  enquanto Configurada, a gravação. O admin vê também Alterar visibilidade (como na W18).
+- **Fase 3, verificação**: além dos testes (migrações também num PostgreSQL descartável), o fluxo
+  rodou num Chromium headless contra o build servido pela API sobre PostgreSQL com o `--demo`: W12 e
+  filtros, ordem da W06, assistente completo (arrastar com mouse e teclado), W16 com edição, Bruno sem
+  acesso, admin compartilhando pela W18, Bruno com acesso, duplicar + Salvar e preparar, W08, W11,
+  W22/W23 e W20.
 
 ---
 

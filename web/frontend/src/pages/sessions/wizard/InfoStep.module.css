@@ -1,0 +1,25 @@
+/* Campos de 720 px, como no protótipo. */
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 720px;
+  margin-top: 24px;
+}
+
+.patient {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+  font-size: var(--font-size-md);
+  line-height: 24px;
+}
+
+.patient strong {
+  font-weight: var(--font-weight-semibold);
+}

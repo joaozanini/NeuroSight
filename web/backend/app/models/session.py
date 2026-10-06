@@ -1,56 +1,107 @@
-"""Sessão de captura do fluxo antigo (cena 3D): uma tabela com meta/frames/samples em JSON.
+"""Sessões (W12–W18): o que o óculos vai mostrar a um paciente, configurado no site.
 
-O viewer precisa de TODAS as samples de uma sessão de uma vez (overlay client-side),
-então guardar como JSON evita join e devolve tudo numa leitura. Colunas achatadas
-(fov, w, h, fps, contagens, status...) servem para listar/ordenar barato.
+Ciclo do status: Configurada → Em andamento → Aguardando dados → Concluída ou Interrompida. A
+sessão nasce Configurada pelo assistente (W13); as outras transições chegam nas fases 4 e 5, com o
+motivo do fim em `end_reason` (botão B, interrompida pelo pesquisador, queda).
 
-O esquema desta tabela é o da baseline do Alembic (0001_baseline) e não deve mudar sem migração.
+A sequência (`session_stimuli`) guarda a ordem e, nas imagens, o tempo de tela; sem tempo, a troca
+é manual. Vídeos avançam sozinhos ao terminar.
+
+Visibilidade: o responsável sempre vê; `private` é só ele, `shared` inclui os pesquisadores de
+`session_shares` e `all` abre para todos. Quem tem "Ver sessões de outros pesquisadores" vê todas.
 """
-from sqlalchemy import DateTime, Float, Integer, String, Text
-from sqlalchemy.orm import mapped_column
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base, JSONType, new_id, utcnow
+from .base import Base, BigIntPK, UtcDateTime, new_id, utcnow
+from .patient import Patient
+from .stimulus import Stimulus
+from .user import User
+
+SESSION_TYPES = ("media_sequence",)
+SESSION_STATUSES = ("configured", "running", "awaiting_data", "completed", "interrupted")
+VISIBILITIES = ("private", "shared", "all")
+END_REASONS = ("button_b", "interrupted", "disconnected")
 
 
 class Session(Base):
     __tablename__ = "sessions"
 
-    id = mapped_column(String(32), primary_key=True, default=new_id)
-    # Nome da pasta no device (X-Session-Id) — chave de idempotência (re-run retoma a mesma linha).
-    device_session_id = mapped_column(String(255), unique=True, index=True, nullable=False)
-    status = mapped_column(String(20), default="uploading", index=True, nullable=False)  # uploading|processing|complete|failed
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    # Único tipo por enquanto: "Fluxo de imagens e vídeos".
+    type: Mapped[str] = mapped_column(String(30), default="media_sequence", nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="configured", index=True, nullable=False)
+    end_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
-    # meta achatado
-    capture_fov_deg = mapped_column(Float, nullable=True)
-    frame_width = mapped_column(Integer, nullable=True)
-    frame_height = mapped_column(Integer, nullable=True)
-    video_fps = mapped_column(Float, nullable=True)
-    uv_origin = mapped_column(String(32), default="top-left")
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    objective: Mapped[str] = mapped_column(Text, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # "Gravar a sessão": o óculos grava o que o paciente viu, junto com o rastreamento.
+    record: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    visibility: Mapped[str] = mapped_column(String(20), default="private", nullable=False)
 
-    # rollups
-    duration_seconds = mapped_column(Float, default=0.0)
-    frame_count = mapped_column(Integer, default=0)            # frames de fato no disco
-    declared_frame_count = mapped_column(Integer, default=0)   # len(meta.frames[])
-    sample_count = mapped_column(Integer, default=0)
-    valid_sample_count = mapped_column(Integer, default=0)
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), index=True, nullable=False)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    # "Duplicar para outro paciente": a sessão de origem.
+    duplicated_from_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id"), nullable=True)
 
-    # tempos
-    captured_at = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
-    completed_at = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at = mapped_column(UtcDateTime, default=utcnow, index=True, nullable=False)
+    updated_at = mapped_column(UtcDateTime, default=utcnow, onupdate=utcnow, nullable=False)
+    started_at = mapped_column(UtcDateTime, nullable=True)
+    ended_at = mapped_column(UtcDateTime, nullable=True)
 
-    # mídia (caminhos/keys, nunca blob)
-    media_dir = mapped_column(String(512), nullable=True)
-    video_path = mapped_column(String(512), nullable=True)
-    video_codec = mapped_column(String(16), nullable=True)
+    patient: Mapped[Patient] = relationship(lazy="joined")
+    owner: Mapped[User] = relationship(lazy="joined")
+    duplicated_from: Mapped["Session | None"] = relationship(remote_side=[id], lazy="select")
+    items: Mapped[list["SessionStimulus"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan", order_by="SessionStimulus.position",
+        lazy="selectin",
+    )
+    shares: Mapped[list["SessionShare"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan", lazy="selectin",
+    )
 
-    # payload (uma leitura alimenta o viewer inteiro)
-    meta = mapped_column(JSONType, default=dict)
-    frames = mapped_column(JSONType, default=list)    # [{idx,t,file}]
-    samples = mapped_column(JSONType, default=list)   # [{t,valid,world,uv,confidence}]
 
-    error_detail = mapped_column(Text, nullable=True)
+class SessionStimulus(Base):
+    """Um estímulo da sequência, na posição em que aparece (a partir de 1)."""
 
-    @property
-    def has_video(self) -> bool:
-        return bool(self.video_path)
+    __tablename__ = "session_stimuli"
+    __table_args__ = (UniqueConstraint("session_id", "stimulus_id"),)
+
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    stimulus_id: Mapped[str] = mapped_column(ForeignKey("stimuli.id"), index=True, nullable=False)
+    # Tempo de tela das imagens, em segundos; vazio = troca manual. Vídeos não têm.
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    session: Mapped[Session] = relationship(back_populates="items")
+    stimulus: Mapped[Stimulus] = relationship(lazy="joined")
+
+
+class SessionShare(Base):
+    """Pesquisador escolhido para ver uma sessão compartilhada (W18)."""
+
+    __tablename__ = "session_shares"
+
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True, index=True)
+    created_at = mapped_column(UtcDateTime, default=utcnow, nullable=False)
+
+    session: Mapped[Session] = relationship(back_populates="shares")
+    user: Mapped[User] = relationship(lazy="joined")
+
+
+class SessionMarker(Base):
+    """Marcação feita pelo pesquisador durante a sessão (W15), com `t` em segundos desde o início.
+
+    Fica só no servidor; a tela ao vivo chega na Fase 4.
+    """
+
+    __tablename__ = "session_markers"
+
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True, nullable=False)
+    t: Mapped[float] = mapped_column(Float, nullable=False)
+    text: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at = mapped_column(UtcDateTime, default=utcnow, nullable=False)
+    created_by_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)

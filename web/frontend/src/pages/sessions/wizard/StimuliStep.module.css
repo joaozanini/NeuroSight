@@ -1,0 +1,251 @@
+/* Etapa 3 da W13: dois painéis num cartão de 616 px, cada lista rola por dentro. */
+.card {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  height: 616px;
+  overflow: hidden;
+}
+
+.libraryPanel,
+.sequencePanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 24px 24px 20px;
+}
+
+.libraryPanel {
+  border-right: 1px solid var(--color-border-strong);
+}
+
+.sequencePanel {
+  padding-left: 24px;
+}
+
+.panelTitle {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 28px;
+}
+
+.panelLead {
+  margin-top: 4px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.search {
+  margin-top: 20px;
+}
+
+.kinds {
+  display: flex;
+  margin: 12px 0 14px;
+}
+
+.kinds > * {
+  flex: 1;
+}
+
+/* Linhas da biblioteca e da sequência: miniatura de 64 × 40, nome e tipo. */
+.library,
+.sequence {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0 6px 2px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.libraryItem,
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.libraryItem + .libraryItem,
+.row + .row {
+  margin-top: 8px;
+}
+
+.thumb {
+  flex: 0 0 64px;
+  width: 64px;
+  border-radius: var(--radius-sm);
+}
+
+.thumb svg {
+  width: 20px;
+  height: 20px;
+}
+
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kind {
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.added {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 0 10px;
+  color: var(--color-success);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.empty,
+.emptySequence {
+  padding: 24px 0;
+  color: var(--color-text-muted);
+}
+
+.emptySequence {
+  margin-top: 16px;
+  padding: 32px 24px;
+  border: 1px dashed var(--color-border-control);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+}
+
+.sequenceHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.total {
+  flex-shrink: 0;
+  font-size: var(--font-size-md);
+  line-height: 24px;
+  color: var(--color-text-muted);
+}
+
+.sequence {
+  margin-top: 16px;
+}
+
+.dragging {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--shadow-overlay);
+}
+
+.handle,
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+}
+
+.handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.handle:hover,
+.remove:hover {
+  background: var(--color-fill-neutral);
+  color: var(--color-text);
+}
+
+.handle:focus-visible,
+.remove:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.position {
+  flex: 0 0 24px;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.time {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 72px;
+  color: var(--color-text-muted);
+}
+
+.seconds {
+  width: 52px;
+  height: 44px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-control);
+  text-align: center;
+}
+
+.seconds:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.seconds[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+@media (max-width: 1100px) {
+  .card {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .libraryPanel {
+    height: 520px;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border-strong);
+  }
+
+  .sequencePanel {
+    height: 560px;
+  }
+}

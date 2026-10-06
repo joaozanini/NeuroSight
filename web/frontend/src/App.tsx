@@ -19,6 +19,9 @@ import UsersPage from './pages/admin/UsersPage'
 import PatientDetailPage from './pages/patients/PatientDetailPage'
 import PatientFormPage from './pages/patients/PatientFormPage'
 import PatientsPage from './pages/patients/PatientsPage'
+import NewSessionPage from './pages/sessions/NewSessionPage'
+import SessionDetailPage from './pages/sessions/SessionDetailPage'
+import SessionsPage from './pages/sessions/SessionsPage'
 import StimuliPage from './pages/stimuli/StimuliPage'
 import StimulusDetailPage from './pages/stimuli/StimulusDetailPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
@@ -62,6 +65,9 @@ export default function App() {
           <Route path="/pacientes/novo" element={guarded('patients.edit', <PatientFormPage />)} />
           <Route path="/pacientes/:patientId" element={guarded('patients.view', <PatientDetailPage />)} />
           <Route path="/pacientes/:patientId/editar" element={guarded('patients.edit', <PatientFormPage />)} />
+          <Route path="/sessoes" element={<SessionsPage />} />
+          <Route path="/sessoes/nova" element={guarded('sessions.run', <NewSessionPage />)} />
+          <Route path="/sessoes/:sessionId" element={<SessionDetailPage />} />
           <Route path="/estimulos" element={<StimuliPage />} />
           <Route path="/estimulos/:stimulusId" element={<StimulusDetailPage />} />
 

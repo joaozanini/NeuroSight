@@ -1,0 +1,49 @@
+/* Cartão e rodapé comuns às etapas da W13. */
+.card {
+  padding: 28px;
+}
+
+.heading {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 28px;
+}
+
+.lead {
+  margin-top: 4px;
+  font-size: var(--font-size-md);
+  line-height: 24px;
+  color: var(--color-text-muted);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.footerStart,
+.footerEnd {
+  display: flex;
+  gap: 12px;
+}
+
+.notice {
+  margin-top: 20px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+}
+
+.error {
+  margin-top: 16px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-danger);
+}

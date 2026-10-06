@@ -1,0 +1,65 @@
+/* "Pesquisadores com acesso" da W18: bloco cinza com a busca e a lista marcável. */
+.shared {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 20px 0 0;
+  padding: 16px 16px 16px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+}
+
+.sharedTitle {
+  float: left; /* fica no fluxo do flex, com o espaço entre os itens */
+  width: 100%;
+  padding: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+}
+
+.people {
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  list-style: none;
+}
+
+.people li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  padding: 0 16px;
+}
+
+.people li + li {
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.person {
+  flex: 1;
+  min-width: 0;
+}
+
+.role {
+  flex-shrink: 0;
+  font-size: var(--font-size-hint);
+  color: var(--color-text-muted);
+}
+
+.empty {
+  padding: 12px 0;
+  color: var(--color-text-muted);
+}
+
+.alert {
+  margin-top: 16px;
+}

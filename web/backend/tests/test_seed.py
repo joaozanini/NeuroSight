@@ -1,5 +1,6 @@
 """`python -m app.seed`: primeiro admin com convite, matriz padrão e os dados de exemplo."""
 import dataclasses
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import func, select
@@ -94,3 +95,28 @@ def test_demo_creates_patients_and_stimuli_once(client, capsys):
     assert client.get(f"{API}/patients/next-code").json() == {"code": "P-016"}
     pid = client.get(f"{API}/patients", params={"q": "P-014"}).json()["items"][0]["id"]
     assert client.get(f"{API}/patients/{pid}/consent").content.startswith(b"%PDF-")
+
+
+def test_demo_creates_the_sessions_of_the_prototypes_once(client, capsys):
+    assert seed.main(["--demo"]) == 0
+    assert "Sessões de exemplo: 26 criadas." in capsys.readouterr().out
+    seed.main(["--demo"])
+    assert "Sessões de exemplo: já existem." in capsys.readouterr().out
+
+    # W12 e W06 como a Ana vê: 23 sessões nos últimos 30 dias, P-014 com 3.
+    login(client, "ana.souza@exemplo.com", seed.DEMO_PASSWORD)
+    since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    page = client.get(f"{API}/sessions", params={"since": since}).json()
+    assert page["total"] == 23
+    assert [(r["title"], r["patient_code"], r["status"], r["visibility"]) for r in page["items"][:4]] == [
+        ("Rostos neutros e expressivos", "P-014", "running", "private"),
+        ("Paisagens naturais", "P-009", "awaiting_data", "private"),
+        ("Rostos neutros e expressivos", "P-015", "configured", "private"),
+        ("Publicidade em vídeo", "P-011", "interrupted", "shared"),
+    ]
+    patients = client.get(f"{API}/patients").json()["items"]
+    assert [(p["code"], p["sessions_count"]) for p in patients] == [
+        ("P-014", 3), ("P-009", 2), ("P-015", 1), ("P-011", 1), ("P-007", 2), ("P-012", 1), ("P-010", 2), ("P-008", 1),
+    ]
+    login(client, "carlos.lima@exemplo.com", seed.DEMO_PASSWORD)
+    assert client.get(f"{API}/sessions").json()["total"] == 26

@@ -6,7 +6,7 @@ import type { UserDetail, UserSummary } from '../../api/users'
 import { mockApi, reply } from '../../test/api'
 import { ADMIN, ALL_PERMISSIONS } from '../../test/fixtures'
 import { renderWithProviders } from '../../test/render'
-import { periodStart } from './AuditPage'
+import { periodStart } from '../../lib/periods'
 
 afterEach(() => {
   vi.unstubAllGlobals()
