@@ -58,7 +58,8 @@
   usuários `ADMIN`/`RESEARCHER` (`src/test/fixtures.ts`); toda tela interna precisa de `GET /me`.
 - **Dados de exemplo**: `python -m app.seed --demo` cria os usuários da W19 (senha `NeuroSight#2026`).
   Para ver e-mails, Mailpit com `QUESTPRO_SMTP_HOST/PORT/SECURITY` (ver `web/README.md`).
-- `sessions_as_owner` (W20) devolve 0 até a Fase 3 ligar as sessões novas.
+- `sessions_as_owner` (W20) devolve 0: **a Fase 3 precisa ligá-lo** à contagem de sessões novas em
+  que o usuário é o responsável (`_detail` em `app/routers/users.py`).
 
 ### Notas da Fase 2 (para as próximas sessões)
 - **O que a Fase 3 liga**: `sessions_count`, `last_session_at` e `sessions` dos pacientes
@@ -91,8 +92,6 @@
   atual vira `legacy_sessions`, só leitura e sem tela. Se os dados antigos puderem ser
   descartados, a tabela sai. **Confirmar com o usuário na Fase 3**, antes de mexer nessa tabela.
 - **Servidor de produção** (domínio, proxy reverso existente): confirmar na Fase 8.
-- **Rotas antigas de leitura** (`GET /api/v1/sessions...`) continuam sem login. Decidir na Fase 3,
-  junto do fluxo antigo, se exigem login ou saem.
 
 ### Registro de desvios
 _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê._
@@ -159,9 +158,15 @@ _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê
   do navegador e células que começam com `=`, `+`, `-` ou `@` escapadas.
 - **Fase 1, extras de infraestrutura**: `pool_pre_ping` no engine (conexão caída depois de
   reiniciar o PostgreSQL); `tzdata` nas dependências (fusos do CSV na imagem slim).
-- **Fase 1, deploy**: o `docker-compose.yml` não foi mexido (fica para a Fase 8, com o usuário).
-  Até lá ele não repassa `QUESTPRO_SMTP_*` nem `QUESTPRO_PUBLIC_BASE_URL`; o `DEPLOY.md` explica
-  como criar o primeiro admin no servidor.
+- **Fase 1, deploy** (pendências fechadas depois, a pedido do usuário, no branch
+  `fase-1-pendencias`): o `docker-compose.yml` passou a repassar `QUESTPRO_PUBLIC_BASE_URL`
+  (padrão `http://localhost:<porta>`), `QUESTPRO_SECRET_KEY`, `QUESTPRO_COOKIE_SECURE` e
+  `QUESTPRO_SMTP_*`, sem mexer no resto (workers, proxy e TLS continuam para a Fase 8). A API avisa
+  no log quando serve o site com os links apontando para `localhost`.
+- **Fase 1, rotas antigas de leitura** (`GET /api/v1/sessions...`, também resolvido em
+  `fase-1-pendencias`): com `QUESTPRO_API_KEY` definida, exigem o login do site ou a `X-Api-Key`;
+  sem a chave (dev) continuam abertas, como a escrita. O `replay_session.py` manda a chave também
+  ao acompanhar o status. Isso não decide nada sobre a tabela antiga, que segue para a Fase 3.
 - **Fase 2, cadastro do paciente em multipart**: os campos em JSON (`data`) e o PDF
   (`consent_file`) vão numa requisição só, para o termo entrar no mesmo registro da auditoria. A
   edição é `PUT` (o formulário inteiro) e inativar/reativar, `PUT /patients/{id}/status`.

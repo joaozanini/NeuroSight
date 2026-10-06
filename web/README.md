@@ -119,12 +119,13 @@ py -3.12 scripts/replay_session.py ./synthetic
 | POST | `/api/v1/sessions` | cria/atualiza a sessão a partir do `gaze.json` (header `X-Session-Id`) 🔑 |
 | POST | `/api/v1/sessions/{id}/frames` | lote de JPEGs (multipart, campo `frames`) 🔑 |
 | POST | `/api/v1/sessions/{id}/complete` | finaliza e agenda a montagem do MP4 🔑 |
-| GET | `/api/v1/sessions?limit=&offset=` | lista paginada (resumos) |
-| GET | `/api/v1/sessions/{id}` | detalhe: meta + frames + todas as amostras + `video_url` |
-| GET | `/api/v1/sessions/{id}/video` | MP4 com suporte a Range/seek |
+| GET | `/api/v1/sessions?limit=&offset=` | lista paginada (resumos) 🔒 |
+| GET | `/api/v1/sessions/{id}` | detalhe: meta + frames + todas as amostras + `video_url` 🔒 |
+| GET | `/api/v1/sessions/{id}/video` | MP4 com suporte a Range/seek 🔒 |
 | DELETE | `/api/v1/sessions/{id}` | apaga sessão e mídia 🔑 |
 
 🔑 = exige header `X-Api-Key` quando `QUESTPRO_API_KEY` está definida (produção).
+🔒 = com a chave definida, exige o login do site ou o header `X-Api-Key`.
 Docs interativas em `http://localhost:8000/docs`.
 
 ## Heatmap (como é calculado)

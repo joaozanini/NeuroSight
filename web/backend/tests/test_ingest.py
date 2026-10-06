@@ -11,6 +11,8 @@ import pytest
 
 from app.config import settings
 
+from .accounts import researcher
+
 API = settings.api_prefix
 DEVICE_ID = "2026-06-17_22-10-54"
 
@@ -172,5 +174,26 @@ def test_api_key_protects_writes_when_configured(client, monkeypatch):
     sid = r.json()["id"]
 
     assert client.delete(f"{API}/sessions/{sid}").status_code == 401
-    # Leituras continuam abertas no fluxo antigo.
+    assert client.delete(f"{API}/sessions/{sid}", headers={"X-Api-Key": "chave-secreta"}).status_code == 200
+
+
+def test_reads_need_login_or_the_key_when_configured(client, monkeypatch):
+    """Com a chave definida, ler as sessões antigas exige o login do site ou a X-Api-Key."""
+    sid = create(client).json()["id"]
+    monkeypatch.setattr(settings, "api_key", "chave-secreta")
+
+    for path in ("/sessions", f"/sessions/{sid}", f"/sessions/{sid}/video"):
+        assert client.get(f"{API}{path}").status_code == 401
+        assert client.get(f"{API}{path}", headers={"X-Api-Key": "errada"}).status_code == 401
+    assert client.get(f"{API}/sessions/{sid}", headers={"X-Api-Key": "chave-secreta"}).status_code == 200
+
+    researcher(client)
+    assert client.get(f"{API}/sessions").json()["total"] == 1
+    assert client.get(f"{API}/sessions/{sid}").status_code == 200
+    # Apagar continua exigindo a chave, mesmo logado.
+    assert client.delete(f"{API}/sessions/{sid}").status_code == 401
+
+
+def test_reads_stay_open_without_a_configured_key(client):
+    sid = create(client).json()["id"]
     assert client.get(f"{API}/sessions/{sid}").status_code == 200
