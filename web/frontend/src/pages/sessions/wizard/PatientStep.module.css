@@ -1,0 +1,105 @@
+.search {
+  max-width: 440px;
+  margin: 24px 0 22px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Linha da W13: rádio, código, nome, nascimento e o número de sessões à direita. */
+.option {
+  display: grid;
+  grid-template-columns: 20px 88px minmax(0, 1fr) 140px 180px;
+  align-items: center;
+  gap: 16px;
+  min-height: 58px;
+  padding: 8px 20px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--font-size-md);
+  line-height: 24px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.option:hover {
+  border-color: var(--color-border-control);
+}
+
+.checked,
+.checked:hover {
+  border: 2px solid var(--color-primary);
+  padding: 7px 19px;
+  background: var(--color-primary-soft);
+}
+
+.option:has(.radio:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.radio {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.radio:focus-visible {
+  outline: none;
+}
+
+.code {
+  font-weight: var(--font-weight-semibold);
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.birth {
+  color: var(--color-text-muted);
+}
+
+.sessions {
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.empty {
+  padding: 24px 0;
+  color: var(--color-text-muted);
+}
+
+.more {
+  margin-top: 14px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.newPatient {
+  margin-top: 24px;
+  font-size: var(--font-size-md);
+  line-height: 24px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 900px) {
+  .option {
+    grid-template-columns: 20px 80px minmax(0, 1fr);
+  }
+
+  .birth,
+  .sessions {
+    display: none;
+  }
+}

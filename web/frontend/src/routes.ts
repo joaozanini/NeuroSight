@@ -16,9 +16,6 @@ export interface ScreenRoute {
 export const APP_SCREENS: ScreenRoute[] = [
   { path: '/', title: 'Início', prototypes: ['W04'], phase: 6 },
 
-  { path: '/sessoes', title: 'Sessões', prototypes: ['W12'], phase: 3, subtitle: 'Suas sessões e as que outros pesquisadores liberaram para você.' },
-  { path: '/sessoes/nova', title: 'Nova sessão', prototypes: ['W13'], phase: 3, back: { to: '/sessoes', label: 'Sessões' } },
-  { path: '/sessoes/:sessionId', title: 'Detalhes da sessão', prototypes: ['W16', 'W18'], phase: 3, back: { to: '/sessoes', label: 'Sessões' } },
   { path: '/sessoes/:sessionId/preparar', title: 'Preparar sessão', prototypes: ['W14'], phase: 4, back: { to: '/sessoes', label: 'Sessões' } },
   {
     path: '/sessoes/:sessionId/analise',
@@ -35,7 +32,6 @@ export const FULLSCREEN_SCREENS: ScreenRoute[] = [
 ]
 
 export const PHASE_NAMES: Record<number, string> = {
-  3: 'Configuração de sessões',
   4: 'Execução ao vivo',
   5: 'Ingestão e análise',
   6: 'Início',

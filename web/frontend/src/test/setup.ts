@@ -6,3 +6,6 @@ import { afterEach } from 'vitest'
 afterEach(() => {
   cleanup()
 })
+
+// O jsdom não rola a página; o assistente da W13 volta ao topo a cada etapa.
+window.scrollTo = () => {}

@@ -87,7 +87,7 @@ export const VISION_LABELS: Record<VisionCorrection, string> = {
 export const patientsKeys = {
   all: ['patients'] as const,
   lists: ['patients', 'list'] as const,
-  list: (filters: PatientFilters) => ['patients', 'list', filters] as const,
+  list: (filters: PatientFilters, pageSize = PATIENTS_PAGE_SIZE) => ['patients', 'list', filters, pageSize] as const,
   detail: (id: string) => ['patients', 'detail', id] as const,
   nextCode: ['patients', 'next-code'] as const,
 }
@@ -102,8 +102,8 @@ function patientForm(input: PatientInput, consentFile?: File | null): FormData {
 const path = (id: string) => `/patients/${encodeURIComponent(id)}`
 
 export const patientsApi = {
-  list: (filters: PatientFilters, signal?: AbortSignal) =>
-    api.get<PatientPage>('/patients', { signal, query: { ...filters, page_size: PATIENTS_PAGE_SIZE } }),
+  list: (filters: PatientFilters, signal?: AbortSignal, pageSize = PATIENTS_PAGE_SIZE) =>
+    api.get<PatientPage>('/patients', { signal, query: { ...filters, page_size: pageSize } }),
   nextCode: (signal?: AbortSignal) => api.get<{ code: string }>('/patients/next-code', { signal }),
   get: (id: string, signal?: AbortSignal) => api.get<PatientDetail>(path(id), { signal }),
   create: (input: PatientInput, consentFile?: File | null) =>

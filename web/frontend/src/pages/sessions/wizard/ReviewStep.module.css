@@ -1,0 +1,99 @@
+/* Etapa 4 da W13: blocos com o rótulo à esquerda (224 px) e o Editar à direita. */
+.card {
+  overflow: hidden;
+}
+
+.block {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 24px;
+  padding: 28px 28px 24px;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.blockTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: 28px;
+}
+
+.value {
+  font-size: var(--font-size-md);
+  line-height: 28px;
+}
+
+.muted {
+  margin-top: 2px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.info {
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr);
+  gap: 12px 0;
+  margin: 0;
+  font-size: var(--font-size-md);
+  line-height: 24px;
+}
+
+.info dt {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+}
+
+.info dd {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thumb,
+.extra {
+  width: 72px;
+  border-radius: var(--radius-sm);
+}
+
+.extra {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 10;
+  background: var(--color-surface-subtle);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.note {
+  padding: 22px 28px;
+  background: var(--color-surface-subtle);
+  font-size: var(--font-size-md);
+  line-height: 24px;
+  color: var(--color-text-muted);
+}
+
+.alert {
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .block {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .block > div,
+  .block > dl {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

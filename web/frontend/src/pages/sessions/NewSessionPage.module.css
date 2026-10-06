@@ -1,0 +1,7 @@
+.stepper {
+  margin-bottom: 28px;
+}
+
+.step:focus {
+  outline: none;
+}

@@ -11,27 +11,14 @@ import Table from '../../components/Table/Table'
 import type { Column } from '../../components/Table/Table'
 import TextLink from '../../components/TextLink/TextLink'
 import { formatDate, formatTime, sentence } from '../../lib/format'
+import { PERIOD_OPTIONS, periodStart } from '../../lib/periods'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { useUrlFilters } from '../../lib/useUrlFilters'
 import AuditDetailModal from './AuditDetailModal'
 import { labelOf } from './auditLabels'
 import styles from './AuditPage.module.css'
 
-const PERIODS = [
-  { value: 'hoje', label: 'Hoje', days: 1 },
-  { value: '7d', label: 'Últimos 7 dias', days: 7 },
-  { value: '30d', label: 'Últimos 30 dias', days: 30 },
-  { value: '90d', label: 'Últimos 90 dias', days: 90 },
-  { value: 'tudo', label: 'Todo o período', days: 0 },
-]
 const DEFAULT_PERIOD = '7d'
-
-// Início do período no fuso de quem olha: "Últimos 7 dias" = hoje e os 6 dias anteriores.
-export function periodStart(period: string, now = new Date()): string | undefined {
-  const days = PERIODS.find((p) => p.value === period)?.days ?? 7
-  if (!days) return undefined
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1)).toISOString()
-}
 
 // W22: registros de auditoria com filtros, CSV e o detalhe (W23). Só leitura.
 export default function AuditPage() {
@@ -108,7 +95,7 @@ export default function AuditPage() {
         <Select
           label="Período"
           hideLabel
-          options={PERIODS.map(({ value, label }) => ({ value, label }))}
+          options={PERIOD_OPTIONS}
           value={period}
           onChange={(e) => setFilter('periodo', e.target.value)}
           fieldClassName={styles.period}
