@@ -21,24 +21,27 @@ from sqlalchemy.orm import Session as DbSession
 from . import seed_media, seed_tracking
 from .db import SessionLocal, migrate
 from .models import Patient, Session, SessionShare, SessionStimulus, Stimulus, User, utcnow
-from .services import accounts, audit, passwords, permissions, tokens
+from .services import accounts, audit, execution, passwords, permissions, tokens
 from .services import patients as patient_rules
 from .services import sessions as session_rules
 from .services import stimuli as stimulus_rules
 
 DEMO_PASSWORD = "NeuroSight#2026"
 
-# Usuários da W19. O primeiro é o admin da demonstração.
+# Usuários da W19. O primeiro é o admin da demonstração. Cada um é cadastrado há tantas horas, para o
+# Início (W04) e a auditoria terem uma história: Igor, o convite pendente, entrou hoje.
 DEMO_USERS = [
-    ("Carlos Lima", "carlos.lima@exemplo.com", "admin", "active"),
-    ("Ana Souza", "ana.souza@exemplo.com", "researcher", "active"),
-    ("Igor Mendes", "igor.mendes@exemplo.com", "researcher", "invited"),
-    ("Bruno Castro", "bruno.castro@exemplo.com", "researcher", "active"),
-    ("Gustavo Prado", "gustavo.prado@exemplo.com", "admin", "active"),
-    ("Daniela Rocha", "daniela.rocha@exemplo.com", "researcher", "active"),
-    ("Eduardo Martins", "eduardo.martins@exemplo.com", "researcher", "active"),
-    ("Fernanda Lopes", "fernanda.lopes@exemplo.com", "researcher", "inactive"),
+    ("Carlos Lima", "carlos.lima@exemplo.com", "admin", "active", 75 * 24),
+    ("Ana Souza", "ana.souza@exemplo.com", "researcher", "active", 72 * 24),
+    ("Igor Mendes", "igor.mendes@exemplo.com", "researcher", "invited", 5),
+    ("Bruno Castro", "bruno.castro@exemplo.com", "researcher", "active", 70 * 24),
+    ("Gustavo Prado", "gustavo.prado@exemplo.com", "admin", "active", 66 * 24),
+    ("Daniela Rocha", "daniela.rocha@exemplo.com", "researcher", "active", 45 * 24),
+    ("Eduardo Martins", "eduardo.martins@exemplo.com", "researcher", "active", 20 * 24),
+    ("Fernanda Lopes", "fernanda.lopes@exemplo.com", "researcher", "inactive", 60 * 24),
 ]
+# Os estímulos de exemplo foram enviados à biblioteca há tantos dias, antes das sessões.
+DEMO_STIMULI_DAYS = 35
 
 
 # Pacientes da W06 (os oito visíveis) e mais sete, para fechar os 15 do subtítulo. A data do TCLE
@@ -114,16 +117,18 @@ DEMO_OBJECTIVES = {
 
 
 def _create(db: DbSession, name: str, email: str, role: str, status: str, password: str | None,
-            created_by: User | None) -> User:
+            created_by: User | None, created_at: datetime | None = None) -> User:
     user = User(
         name=name, email=email.strip().lower(), role=role, status=status,
         password_hash=passwords.hash_password(password) if password else None,
         created_by_id=created_by.id if created_by else None,
     )
+    if created_at is not None:
+        user.created_at = created_at
     db.add(user)
     db.flush()
     audit.record(db, None, created_by, "create", "user", user.name, user.id,
-                 audit.diff({}, accounts.snapshot(user), accounts.USER_FIELD_LABELS))
+                 audit.diff({}, accounts.snapshot(user), accounts.USER_FIELD_LABELS), at=created_at)
     return user
 
 
@@ -153,11 +158,13 @@ def seed_admin(db: DbSession, email: str, name: str) -> None:
 def seed_demo(db: DbSession, password: str) -> None:
     admin = db.scalar(select(User).where(User.role == "admin", User.status == "active").order_by(User.created_at))
     print(f"Usuários de exemplo (senha dos ativos e inativos: {password}):")
-    for name, email, role, status in DEMO_USERS:
+    now = utcnow().replace(second=0, microsecond=0)
+    for name, email, role, status, hours in DEMO_USERS:
         if accounts.find_by_email(db, email):
             print(f"  {email}: já existe")
             continue
-        user = _create(db, name, email, role, status, None if status == "invited" else password, admin)
+        user = _create(db, name, email, role, status, None if status == "invited" else password, admin,
+                       now - timedelta(hours=hours))
         admin = admin or user
         db.commit()
         print(f"  {email}: {permissions.ROLE_LABELS[role]}, {accounts.STATUS_LABELS[status]}")
@@ -184,7 +191,7 @@ def seed_demo_patients(db: DbSession, actor: User | None) -> None:
             patient.consent_file_key, patient.consent_file_size = patient_rules.save_consent_file(patient.id, io.BytesIO(pdf))
             patient.consent_file_name = f"termo-{code}.pdf"
         audit.record(db, None, actor, "create", "patient", code, patient.id,
-                     audit.diff({}, patient_rules.snapshot(patient), patient_rules.FIELD_LABELS))
+                     audit.diff({}, patient_rules.snapshot(patient), patient_rules.FIELD_LABELS), at=registered_at)
         created.append(code)
     db.commit()
     print(f"Pacientes de exemplo: {len(created)} criados." if created else "Pacientes de exemplo: já existem.")
@@ -199,6 +206,7 @@ def seed_demo_stimuli(db: DbSession, actor: User | None) -> None:
         print("Estímulos de exemplo: já existem.")
         return
     saved = []
+    sent_at = utcnow().replace(second=0, microsecond=0) - timedelta(days=DEMO_STIMULI_DAYS)
     with tempfile.TemporaryDirectory() as tmp:
         folder = Path(tmp)
         files = [(item, seed_media.write_image(item, folder)) for item in images]
@@ -209,9 +217,10 @@ def seed_demo_stimuli(db: DbSession, actor: User | None) -> None:
             stimulus.name, stimulus.status = item.name, "active"
             stimulus.description = getattr(item, "description", None)
             stimulus.set_tags(list(item.tags))
+            stimulus.created_at = sent_at
             saved.append(stimulus)
     db.flush()
-    stimulus_rules.audit_saved(db, None, actor, saved)
+    stimulus_rules.audit_saved(db, None, actor, saved, at=sent_at)
     db.commit()
     stimulus_rules.process_device_versions([s.id for s in saved])
     print(f"Estímulos de exemplo: {stimulus_rules.batch_label(saved)}.")
@@ -257,7 +266,8 @@ def seed_demo_sessions(db: DbSession) -> None:
         db.add(session)
         db.flush()
         audit.record(db, None, owner, "create", "session", session_rules.audit_label(session), session.id,
-                     audit.diff({}, session_rules.snapshot(session), session_rules.FIELD_LABELS))
+                     audit.diff({}, session_rules.snapshot(session), session_rules.FIELD_LABELS),
+                     at=session.created_at)
         if visibility != "private":
             before = session_rules.visibility_snapshot(session)
             session.visibility = visibility
@@ -266,7 +276,13 @@ def seed_demo_sessions(db: DbSession) -> None:
             db.expire(session, ["shares"])
             audit.record(db, None, admin, "visibility_change", "session", session_rules.audit_label(session),
                          session.id, audit.diff(before, session_rules.visibility_snapshot(session),
-                                                session_rules.VISIBILITY_FIELD_LABELS))
+                                                session_rules.VISIBILITY_FIELD_LABELS),
+                         at=session.created_at + timedelta(minutes=10))
+        # As Concluídas e as Interrompidas entram na auditoria com os dados (seed_tracking).
+        if status in ("running", "awaiting_data"):
+            execution.record_start(db, None, owner, session, seed_tracking.DEMO_DEVICE["name"], at=session.started_at)
+        if status == "awaiting_data":
+            execution.record_end(db, None, owner, session, agent=seed_tracking.DEMO_AGENT, at=session.ended_at)
         created += 1
     db.commit()
     print(f"Sessões de exemplo: {created} criadas.")

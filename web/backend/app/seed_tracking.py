@@ -26,6 +26,8 @@ from .synthetic import Recording, VirtualClock, play
 DEMO_CAPTURE = {"width": 640, "height": 400, "fps": 10, "jpegQuality": 75}
 DEMO_DEVICE = {"id": "quest-pro-exemplo", "name": "Quest Pro 01", "model": "Quest Pro"}
 DEMO_APP_VERSION = "1.0.0"
+# O "De onde" do fim pelo B na auditoria, como o óculos de verdade (services/execution.device_agent).
+DEMO_AGENT = f"NeuroSight/{DEMO_APP_VERSION} ({DEMO_DEVICE['name']}; {DEMO_DEVICE['model']})"
 # Marcações por sequência (W16, W17), em segundos desde o início da sessão.
 DEMO_MARKERS = {
     "rostos": [(28.0, "Paciente movimentou a cabeça"), (65.0, "Equipe de enfermagem entrou no quarto")],
@@ -81,6 +83,9 @@ def generate(db: DbSession, session: Session, sequence: str) -> bool:
     session.status, session.end_reason = "awaiting_data", recording.end_reason
     session.ended_at = session.started_at + timedelta(seconds=duration)
     session.data_received_at = session.ended_at + timedelta(seconds=40)
+    execution.record_start(db, None, session.owner, session, DEMO_DEVICE["name"], at=session.started_at)
+    execution.record_end(db, None, session.owner, session,
+                         agent=DEMO_AGENT if session.end_reason == "button_b" else None, at=session.ended_at)
     for t, text in DEMO_MARKERS.get(sequence, []):
         if t < duration - 1:
             db.add(SessionMarker(session_id=session.id, t=t, text=text, created_by_id=session.owner_id,

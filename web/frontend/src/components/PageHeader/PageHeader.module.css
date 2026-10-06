@@ -23,14 +23,18 @@
   text-underline-offset: 3px;
 }
 
+/* Em telas estreitas, as ações descem para baixo do título em vez de espremê-lo (Início com três
+   botões a 1024 px). */
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px 24px;
 }
 
 .heading {
+  flex: 1 1 320px;
   min-width: 0;
 }
 

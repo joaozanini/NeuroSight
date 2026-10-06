@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Circle, Play, RectangleGoggles } from 'lucide-react'
+import { dashboardKeys } from '../../../api/dashboard'
 import { keepNewest, liveApi, useLiveSession } from '../../../api/live'
 import type { LiveSnapshot, TrackingState } from '../../../api/live'
 import { controlSessionPath, sessionsApi, sessionsKeys } from '../../../api/sessions'
@@ -105,6 +106,7 @@ function Preparation({ session }: { session: SessionDetail }) {
         old && { ...old, status: next.status, started_at: next.started_at, date: next.started_at ?? old.date },
       )
       queryClient.invalidateQueries({ queryKey: sessionsKeys.lists })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.badge })
       navigate(controlSessionPath(session.id))
     },
     onError: (err) => setActionError(sentence(err.message)),

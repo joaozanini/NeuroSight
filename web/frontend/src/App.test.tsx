@@ -3,12 +3,9 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import App from './App'
-import { APP_SCREENS } from './routes'
 import { mockApi, reply } from './test/api'
 import { ADMIN, RESEARCHER } from './test/fixtures'
 import { renderWithProviders } from './test/render'
-
-const sample = (path: string) => path.replace(':sessionId', 's1').replace(':patientId', 'p1').replace(':stimulusId', 'e1')
 
 function loggedAs(me: typeof ADMIN | null, routes: Record<string, unknown> = {}) {
   return mockApi({ 'GET /me': me ?? reply(401, { detail: 'não autenticado' }), ...routes })
@@ -19,13 +16,13 @@ afterEach(() => {
 })
 
 describe('rotas', () => {
-  it.each(APP_SCREENS.map((s) => [s.path, s] as const))('%s abre o placeholder dentro do menu lateral', async (path, screenRoute) => {
-    loggedAs(ADMIN)
-    renderWithProviders(<App />, { route: sample(path) })
-    expect(await screen.findByRole('heading', { level: 1, name: screenRoute.title })).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Menu principal' })).toBeInTheDocument()
-    expect(screen.getByText(`Segue o protótipo ${screenRoute.prototypes.join(' e ')}`, { exact: false })).toBeInTheDocument()
-    expect(document.title).toBe(`${screenRoute.title} · NeuroSight`)
+  it('/ abre o Início dentro do menu lateral, com o selo de sessões', async () => {
+    loggedAs(ADMIN, { 'GET /dashboard/badge': { sessions: 2 } })
+    renderWithProviders(<App />, { route: '/' })
+    expect(await screen.findByRole('heading', { level: 1, name: 'Olá, Carlos' })).toBeInTheDocument()
+    const nav = screen.getByRole('navigation', { name: 'Menu principal' })
+    expect(await within(nav).findByRole('link', { name: /Sessões\s*2 em andamento ou aguardando dados/ })).toBeInTheDocument()
+    expect(document.title).toBe('Início · NeuroSight')
   })
 
   it.each([

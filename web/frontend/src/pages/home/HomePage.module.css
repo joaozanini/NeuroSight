@@ -1,0 +1,137 @@
+/* W04. Medidas dos PNGs (desenhados a 1440 px): cartões de KPI a 40 px do cabeçalho com 22 px entre
+   eles, seções a 48 px uma da outra e linhas de "Precisam de atenção" com 72 px. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 12px;
+}
+
+.section {
+  margin-top: 48px;
+}
+
+.kpis + .section {
+  margin-top: 40px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Sem link ao lado do título, o conteúdo fica mais perto (como em "Precisam de atenção"). */
+.sectionHead:has(> h2:only-child) {
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 28px;
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.empty {
+  padding: 24px;
+  color: var(--color-text-muted);
+}
+
+.attention {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attentionRow {
+  display: grid;
+  /* Ação com largura fixa: "Abrir controle" e "Ver sessão" não desalinham a coluna do horário. */
+  grid-template-columns: 192px minmax(0, 1fr) 280px 112px;
+  align-items: center;
+  gap: 8px 24px;
+  min-height: 72px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.attentionRow:last-child {
+  border-bottom: 0;
+}
+
+.attentionStatus {
+  display: flex;
+}
+
+.attentionSession {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.attentionTitle {
+  font-size: var(--font-size-control);
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+}
+
+.attentionSession .muted {
+  font-size: var(--font-size-md);
+  line-height: 22px;
+}
+
+.attentionWhen {
+  font-size: var(--font-size-md);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.attentionAction {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.sessionLink {
+  font-weight: var(--font-weight-medium);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+/* Status logo depois da coluna de números alinhada à direita (pesquisador). */
+.statusAfterNumber {
+  padding-left: 32px !important;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .attentionRow {
+    grid-template-columns: 192px minmax(0, 1fr) 112px;
+  }
+
+  .attentionWhen {
+    grid-column: 2;
+  }
+
+  .attentionAction {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}

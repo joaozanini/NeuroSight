@@ -51,7 +51,7 @@ describe('W01 Login', () => {
   it('ignora um ?next= para outro site', async () => {
     mockApi({ 'GET /me': ADMIN })
     renderWithProviders(<App />, { route: '/login?next=%2F%2Fmalicioso.com' })
-    expect(await screen.findByRole('heading', { level: 1, name: 'Início' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: /^Olá, / })).toBeInTheDocument()
   })
 
   it('leva o e-mail digitado para o "Esqueci minha senha"', async () => {
@@ -115,7 +115,7 @@ describe('W03 Definir nova senha', () => {
 
     await user.type(screen.getByLabelText('Confirmar senha'), '!')
     await user.click(screen.getByRole('button', { name: 'Salvar nova senha' }))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Início' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: /^Olá, / })).toBeInTheDocument()
     expect(api.callsTo('POST', '/auth/accept-invite')[0].body).toEqual({ token: 'abc', password: 'Senha123!' })
     expect(screen.getByText('Senha criada. Boas-vindas ao NeuroSight!')).toBeInTheDocument()
   })
