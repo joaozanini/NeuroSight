@@ -1,6 +1,7 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Logo from '../components/Logo/Logo'
 import BrandPanel from './BrandPanel'
+import PageTransition from './PageTransition'
 import styles from './AuthLayout.module.css'
 
 // Telas de acesso (W01–W03): marca no canto, formulário centralizado à esquerda e o painel da
@@ -15,7 +16,7 @@ export default function AuthLayout() {
         </Link>
         <main className={styles.content}>
           <div className={styles.inner}>
-            <Outlet />
+            <PageTransition />
           </div>
         </main>
       </div>
