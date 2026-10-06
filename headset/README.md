@@ -80,7 +80,7 @@ Depois de mudar config Android/XR: **apague `Intermediate/Android`** antes de re
 
 | Campo | Default | Função |
 |---|---|---|
-| `Upload Url` | `http://<ip>:8000/api/v1/sessions` | Rota **base** da API (o código anexa `/{id}/frames` e `/{id}/complete`). Vazio = só grava local. |
+| `Upload Url` | `http://<ip>:8000/api/v1/sessions` | Rota **base** da API (o código anexa `/{id}/frames` e `/{id}/complete`). Vazio = só grava local. **A rota saiu na Fase 3**; o envio volta com o app novo (Fase 7). |
 | `Api Key` | — | Mesmo valor da `QUESTPRO_API_KEY` do servidor |
 | `Show Marker` | ✅ | Bolinha vermelha (desligue em sessões reais) |
 | `Marker Size` | 30 cm | Diâmetro da bolinha |
@@ -121,8 +121,8 @@ Saved/GazeSessions/<YYYY-MM-DD_HH-MM-SS>/
 ```
 
 O JSON tem *flush* periódico (~5 s): mesmo que o app seja morto, a sessão sobrevive.
-Sem rede no momento? Puxe depois com `adb pull` e envie com o
-[`web/scripts/replay_session.py`](../web/scripts/replay_session.py).
+Sem rede no momento? Puxe depois com `adb pull`. (O `replay_session.py` e a rota de upload antiga
+saíram na Fase 3 do [plano](../docs/PLANO-IMPLEMENTACAO.md); o envio volta com o app novo, na Fase 7.)
 
 ## Heatmap offline (sem o site)
 

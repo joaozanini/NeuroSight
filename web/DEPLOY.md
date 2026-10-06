@@ -8,6 +8,12 @@ qualquer lugar** e você visualize de qualquer navegador.
 [Seu navegador]              --------> http://SEU-SERVIDOR:8000/                  (site)
 ```
 
+> **Fase 3 (sessões configuradas no site):** a ingestão do fluxo antigo (`POST /api/v1/sessions`,
+> `/frames`, `/complete`) e o `scripts/replay_session.py` saíram. O app atual do óculos não consegue
+> mais enviar até o app novo (Fase 7), e os passos 5.4 e 6 abaixo ficam sem efeito até lá. As
+> sessões antigas continuam no banco (tabela `legacy_sessions`), só para leitura em
+> `/api/v1/legacy/sessions`. O roteiro completo do deploy é refeito na Fase 8.
+
 ---
 
 ## 0. O que pedir/confirmar com a TI da faculdade (ANTES de tudo)
@@ -50,8 +56,8 @@ QUESTPRO_DB_PASSWORD=outra-senha-forte
 QUESTPRO_HTTP_PORT=8000
 QUESTPRO_PUBLIC_BASE_URL=http://IP-DO-SERVIDOR:8000      # endereço do site, vai nos links dos e-mails
 ```
-> A `QUESTPRO_API_KEY` protege o upload e o delete, e a leitura das sessões antigas (que também
-> aceita o login do site). Sem ela definida a API fica **aberta na internet** — não faça isso.
+> A `QUESTPRO_API_KEY` protege a leitura das sessões antigas (`/api/v1/legacy/sessions`, que também
+> aceita o login do site). Sem ela definida essa leitura fica **aberta na internet** — não faça isso.
 
 Para os convites e as redefinições de senha saírem por e-mail, defina também o SMTP
 (`QUESTPRO_SMTP_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_FROM` e `_SECURITY`; veja o
@@ -93,13 +99,8 @@ curl http://IP-DA-VM:8000/healthz
 ```
 Se 5.1 funciona e 5.3 não → é firewall da faculdade (volte ao passo 0.4).
 
-```bash
-# 5.4 ingestão de ponta a ponta, do seu PC (Windows), com uma sessão real já gravada:
-py -3.12 scripts\replay_session.py "C:\GitHub\NeuroSight\headset\Saved\GazeSessions\2026-06-17_22-10-54" ^
-    --api http://IP-DA-VM:8000/api/v1 --api-key SUA-CHAVE
-# -> create / frames / complete / status: complete / codec=h264
-# e a sessão aparece em http://IP-DA-VM:8000
-```
+5.4 (ingestão de ponta a ponta): sem efeito desde a Fase 3; volta com o simulador do óculos
+(`scripts/device_simulator.py`, Fase 4).
 
 ## 6. Apontar o app do óculos pro servidor
 
@@ -176,5 +177,4 @@ costuma estar liberada em qualquer rede).
 | 5.1 ok, 5.3 falha | firewall da faculdade não liberou a porta pra internet |
 | upload do óculos falha com 401 | `Api Key` do Details ≠ `QUESTPRO_API_KEY` do `.env` |
 | sessão fica em `processing` pra sempre | veja `docker compose logs app` (erro na montagem do MP4) |
-| `uploading` eterno sem frames | óculos perdeu rede no meio; reenvie com `replay_session.py` (retoma de onde parou) |
-| disco cheio | apague sessões antigas pelo site (ou aumente o disco) |
+| disco cheio | aumente o disco (a limpeza de sessões antigas pelo site ainda não existe) |

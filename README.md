@@ -42,8 +42,8 @@ git clone git@github.com:joaozanini/NeuroSight.git
   críticas e empacotamento: [`headset/README.md`](headset/README.md) e
   [`headset/PASSO-A-PASSO.md`](headset/PASSO-A-PASSO.md).
 - **Ambiente web (dev):** API em `web/backend` e site em `web/frontend`, veja
-  [`web/README.md`](web/README.md). Para testar sem o óculos, use os scripts de sessão
-  sintética/replay em `web/scripts/`.
+  [`web/README.md`](web/README.md). Para testar sem o óculos, use o simulador
+  `web/scripts/device_simulator.py` (Fase 4) e os dados de exemplo do `python -m app.seed --demo`.
 - **Servidor:** Docker Compose em `web/`, passo a passo em [`web/DEPLOY.md`](web/DEPLOY.md)
   (o servidor clona só a pasta `web/`, sem baixar os assets do Unreal).
 

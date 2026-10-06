@@ -2,7 +2,10 @@
 
 > **Em reconstrução** seguindo o [plano de implementação](../docs/PLANO-IMPLEMENTACAO.md): a
 > interface antiga (lista de sessões e viewer) saiu na Fase 0 e as telas novas entram fase a fase.
-> A ingestão do óculos descrita abaixo continua funcionando igual.
+> Na Fase 3 a ingestão do fluxo antigo (cena 3D) e o `replay_session.py` saíram: as sessões passam
+> a ser configuradas no site, e o óculos volta a enviar dados com o protocolo novo (fases 4 e 7). As
+> sessões antigas ficam no banco, só para leitura em `/api/v1/legacy/sessions`. O resto deste
+> README descreve o sistema antigo e é refeito na Fase 8.
 
 Plataforma web + API feita sob medida para o app
 **[do headset](../headset/)** (Unreal Engine 5.5,
@@ -103,29 +106,33 @@ alembic revision --autogenerate -m "descrição"  # nova migração a partir dos
 
 ### Testar sem o óculos
 
-```bash
-# reenviar uma sessão real (puxada do headset com adb pull)
-py -3.12 scripts/replay_session.py "caminho/da/sessao" [--api http://SERVIDOR:8000/api/v1 --api-key CHAVE]
-
-# ou gerar uma sessão sintética com olhar conhecido (valida o heatmap de ponta a ponta)
-py -3.12 scripts/make_synthetic_session.py ./synthetic
-py -3.12 scripts/replay_session.py ./synthetic
-```
+O simulador do óculos (`scripts/device_simulator.py`) chega na Fase 4. Até lá, `python -m app.seed
+--demo` cria usuários, pacientes, estímulos e sessões de exemplo.
 
 ## API
 
+Sessões configuradas no site (Fase 3; todas exigem o login, e cada um vê só o que a
+visibilidade da sessão deixa):
+
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/api/v1/sessions` | cria/atualiza a sessão a partir do `gaze.json` (header `X-Session-Id`) 🔑 |
-| POST | `/api/v1/sessions/{id}/frames` | lote de JPEGs (multipart, campo `frames`) 🔑 |
-| POST | `/api/v1/sessions/{id}/complete` | finaliza e agenda a montagem do MP4 🔑 |
-| GET | `/api/v1/sessions?limit=&offset=` | lista paginada (resumos) 🔒 |
-| GET | `/api/v1/sessions/{id}` | detalhe: meta + frames + todas as amostras + `video_url` 🔒 |
-| GET | `/api/v1/sessions/{id}/video` | MP4 com suporte a Range/seek 🔒 |
-| DELETE | `/api/v1/sessions/{id}` | apaga sessão e mídia 🔑 |
+| GET | `/api/v1/sessions?q=&status=&owner_id=&since=&page=` | lista da W12 |
+| GET | `/api/v1/sessions/owners` | responsáveis para o filtro da W12 |
+| POST | `/api/v1/sessions` | cria a sessão do assistente (W13), com a sequência |
+| GET | `/api/v1/sessions/{id}` | detalhe (W16) |
+| PATCH | `/api/v1/sessions/{id}` | edita título, objetivo, observações e gravação |
+| GET | `/api/v1/sessions/{id}/share-candidates` | pesquisadores para a W18 |
+| PUT | `/api/v1/sessions/{id}/visibility` | muda a visibilidade (W18) |
 
-🔑 = exige header `X-Api-Key` quando `QUESTPRO_API_KEY` está definida (produção).
-🔒 = com a chave definida, exige o login do site ou o header `X-Api-Key`.
+Sessões do fluxo antigo, só leitura (🔒 = com `QUESTPRO_API_KEY` definida, exige o login do site
+ou o header `X-Api-Key`):
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/v1/legacy/sessions?limit=&offset=` | lista paginada (resumos) 🔒 |
+| GET | `/api/v1/legacy/sessions/{id}` | detalhe: meta + frames + todas as amostras + `video_url` 🔒 |
+| GET | `/api/v1/legacy/sessions/{id}/video` | MP4 com suporte a Range/seek 🔒 |
+
 Docs interativas em `http://localhost:8000/docs`.
 
 ## Heatmap (como é calculado)
