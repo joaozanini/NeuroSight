@@ -518,6 +518,13 @@ _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê
   para o admin, "Iniciou a sessão …" na auditoria). Depois do B, "processando os dados" e a Concluída:
   selo de volta a 2, "Sessões no mês" +1, "Tempo de coleta" +20,0 s (a duração da sessão), a sessão no
   topo das recentes com 2 estímulos e "Encerrou a sessão …" na auditoria. Capturas a 1440 e 1024 px.
+- **Depois da Fase 6, transição entre as telas** (pedido do usuário; os protótipos são estáticos): os
+  layouts usam o `PageTransition` (`src/layouts/`) no lugar do `<Outlet />`. A página nova entra com fade
+  e 8 px de subida em 0,2 s, como os modais (sem animação com "reduzir movimento"), e uma navegação nova
+  começa do topo; voltar e avançar deixam a rolagem com o navegador. A tela é o caminho: mudar só os
+  parâmetros (filtros, página, `?exibicao=`) não anima, e trocar de caminho recria a página (antes,
+  `/sessoes/A` → `/sessoes/B` reaproveitava o componente). Para o `AppLayout`, as abas da Administração
+  são uma tela só, e o `AdminLayout` anima só o conteúdo da aba. Layout novo: use `<PageTransition />`.
 
 ---
 
