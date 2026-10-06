@@ -1,9 +1,10 @@
-import { Outlet, useNavigate } from 'react-router-dom'
+import { matchPath, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { authApi, hasPermission, useCurrentUser } from '../api/auth'
 import { dashboardApi, dashboardKeys } from '../api/dashboard'
 import { useToast } from '../components/Toast/toastContext'
-import { allowedAdminTabs } from '../pages/admin/adminTabItems'
+import { ADMIN_TABS, allowedAdminTabs } from '../pages/admin/adminTabItems'
+import PageTransition from './PageTransition'
 import Sidebar from './Sidebar'
 import styles from './AppLayout.module.css'
 
@@ -12,6 +13,12 @@ import styles from './AppLayout.module.css'
 // de Sessões conta as em andamento ou aguardando dados (as de "Precisam de atenção" do Início) e se
 // atualiza sozinho, porque o óculos muda o status sem passar pelo navegador.
 const BADGE_REFRESH_MS = 30_000
+
+// As abas da Administração são uma tela só para a transição: o cabeçalho e as abas ficam, e o
+// AdminLayout anima só o conteúdo da aba.
+function screenKey(pathname: string) {
+  return ADMIN_TABS.some((tab) => matchPath(tab.to, pathname)) ? '/admin' : pathname
+}
 
 export default function AppLayout() {
   const me = useCurrentUser()
@@ -48,7 +55,7 @@ export default function AppLayout() {
         onLogout={logout}
       />
       <main id="conteudo" className={styles.main} tabIndex={-1}>
-        <Outlet />
+        <PageTransition screenKey={screenKey} />
       </main>
     </div>
   )

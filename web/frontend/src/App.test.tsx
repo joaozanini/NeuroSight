@@ -92,6 +92,23 @@ describe('menu e permissões', () => {
     expect(screen.getByRole('link', { name: 'Usuários' })).toHaveAttribute('aria-current', 'page')
   })
 
+  it('trocar de aba na Administração mantém o cabeçalho e as abas', async () => {
+    const user = userEvent.setup()
+    loggedAs(ADMIN, {
+      'GET /users': { items: [], total: 0, page: 1, page_size: 8 },
+      'GET /audit': { items: [], total: 0, page: 1, page_size: 10 },
+      'GET /audit/filters': { actions: [], entity_types: [], roles: [], users: [] },
+    })
+    renderWithProviders(<App />, { route: '/admin/usuarios' })
+    const title = await screen.findByRole('heading', { level: 1, name: 'Administração' })
+    const tabs = screen.getByRole('navigation', { name: 'Administração' })
+    await user.click(within(tabs).getByRole('link', { name: 'Auditoria' }))
+    expect(await screen.findByLabelText('Ação')).toBeInTheDocument()
+    // Os mesmos elementos de antes: a transição troca só o conteúdo abaixo das abas.
+    expect(title).toBeInTheDocument()
+    expect(tabs).toBeInTheDocument()
+  })
+
   it('com a permissão da auditoria, o pesquisador vê só essa aba', async () => {
     loggedAs(
       { ...RESEARCHER, permissions: [...RESEARCHER.permissions, 'admin.audit'] },
