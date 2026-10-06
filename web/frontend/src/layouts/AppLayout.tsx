@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { authApi, hasPermission, useCurrentUser } from '../api/auth'
 import { dashboardApi, dashboardKeys } from '../api/dashboard'
 import { useToast } from '../components/Toast/toastContext'
-import { allowedAdminTabs } from '../pages/admin/adminTabs'
+import { allowedAdminTabs } from '../pages/admin/adminTabItems'
 import Sidebar from './Sidebar'
 import styles from './AppLayout.module.css'
 

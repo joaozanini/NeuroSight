@@ -3,7 +3,7 @@ import { useCurrentUser } from '../../api/auth'
 import PageHeader from '../../components/PageHeader/PageHeader'
 import ForbiddenPage from '../ForbiddenPage'
 import AdminTabs from './AdminTabs'
-import { allowedAdminTabs } from './adminTabs'
+import { allowedAdminTabs } from './adminTabItems'
 import styles from './AdminLayout.module.css'
 
 // Cabeçalho e abas comuns a Usuários, Perfis e permissões e Auditoria (W19, W21, W22).
