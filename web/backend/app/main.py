@@ -16,9 +16,10 @@ from .config import settings
 from .db import migrate
 from .logging_config import setup_logging
 from .routers import (
-    audit, auth, device, legacy_sessions, live, me, patients, permissions, sessions, stimuli, users,
+    audit, auth, device, legacy_sessions, live, me, patients, permissions, session_data, sessions, stimuli, users,
 )
 from .schemas.common import Health
+from .services import ingestion
 from .services.stimuli import resume_pending
 
 setup_logging(settings.log_level)
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
     os.makedirs(settings.media_root, exist_ok=True)
     migrate()
     resume_pending()
+    ingestion.resume_pending()
     logger.info(
         "API pronta: mídia em %s, site estático %s",
         os.path.abspath(settings.media_root), _static if _serves_site else "desligado (modo dev)",
@@ -57,6 +59,7 @@ app.add_middleware(
 )
 
 app.include_router(sessions.router, prefix=settings.api_prefix, tags=["sessions"])
+app.include_router(session_data.router, prefix=settings.api_prefix, tags=["session data"])
 app.include_router(live.router, prefix=settings.api_prefix, tags=["live"])
 app.include_router(device.router, prefix=settings.api_prefix, tags=["device"])
 app.include_router(legacy_sessions.router, prefix=settings.api_prefix, tags=["legacy"])

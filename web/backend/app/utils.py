@@ -1,5 +1,5 @@
-"""Helpers sem dependência do banco: os formatos pt-BR usados nos registros da auditoria
-("12/03/1998", "2,4 MB")."""
+"""Helpers sem dependência do banco: os formatos pt-BR usados nos registros da auditoria e nos CSV
+("12/03/1998", "2,4 MB", "5,25")."""
 from datetime import date
 
 
@@ -24,3 +24,17 @@ def format_decimal(value: float) -> str:
     """5.0 -> "5", 2.5 -> "2,5" (tempos de tela na auditoria)."""
     text = f"{value:.2f}".rstrip("0").rstrip(".")
     return text.replace(".", ",")
+
+
+def csv_cell(value: str) -> str:
+    """Texto para uma célula de CSV: o que começa com = + - @ viraria fórmula ao abrir na planilha."""
+    return "'" + value if value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
+
+
+def csv_number(value: float | int | None, digits: int = 3) -> str:
+    """Número com vírgula decimal (o Excel em português lê assim); vazio quando não há valor."""
+    if value is None:
+        return ""
+    if isinstance(value, int):
+        return str(value)
+    return f"{value:.{digits}f}".replace(".", ",")

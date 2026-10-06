@@ -6,7 +6,8 @@ Layout:
   <media_root>/<id>/frames/*.jpg e video.mp4 (fluxo antigo, só leitura: o caminho do vídeo fica na linha)
   <media_root>/stimuli/<id>/original.<ext>, thumb.jpg e device.<ext>
   <media_root>/patients/<id>/<chave>.pdf  (TCLE)
-  <media_root>/sessions/<id>/tracking.json e frames/*.jpg (o que o óculos envia depois do B)
+  <media_root>/sessions/<id>/tracking.json e frames/*.jpg (o que o óculos envia depois do B) e
+      recording.mp4 (montado dos frames na ingestão)
 """
 import os
 import shutil
@@ -45,6 +46,9 @@ class LocalDiskStorage:
 
     def session_frames_dir(self, session_id: str) -> str:
         return os.path.join(self.session_dir(session_id), "frames")
+
+    def session_recording(self, session_id: str) -> str:
+        return os.path.join(self.session_dir(session_id), "recording.mp4")
 
     # ---- Pacientes ----
 

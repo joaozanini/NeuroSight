@@ -198,7 +198,7 @@ class LiveHub:
     def session(self, session_id: str, status: str, total: int, started_at: datetime | None = None,
                 device_id: str | None = None, device_name: str | None = None) -> SessionLive:
         """A sessão no hub, criada a partir do banco quando ainda não está aqui. O status vem sempre
-        do banco, que é quem manda nele (a Fase 5 o muda sem passar pelo hub)."""
+        do banco, que é quem manda nele (a ingestão dos dados o muda e só depois avisa o hub)."""
         with self._lock:
             live = self.sessions.get(session_id)
             if live is None:

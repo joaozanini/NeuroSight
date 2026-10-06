@@ -78,6 +78,11 @@ class Settings(BaseSettings):
     # Tamanho máximo do JSON da sessão enviado pelo óculos.
     max_tracking_mb: int = 512
 
+    # ---- Análise (services/analysis.py) ----
+    # Fixações por I-DT: dispersão máxima (graus de ângulo visual) e duração mínima da janela.
+    fixation_dispersion_deg: float = 1.0
+    fixation_min_ms: float = 100
+
     @property
     def smtp_enabled(self) -> bool:
         return bool(self.smtp_host)

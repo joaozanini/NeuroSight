@@ -11,13 +11,14 @@ import argparse
 import io
 import sys
 import tempfile
+import time as clock
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 
-from . import seed_media
+from . import seed_media, seed_tracking
 from .db import SessionLocal, migrate
 from .models import Patient, Session, SessionShare, SessionStimulus, Stimulus, User, utcnow
 from .services import accounts, audit, passwords, permissions, tokens
@@ -219,10 +220,12 @@ def seed_demo_stimuli(db: DbSession, actor: User | None) -> None:
 def seed_demo_sessions(db: DbSession) -> None:
     """As sessões da W12, com a sequência, a visibilidade e os registros da auditoria.
 
-    As executadas ficam com o status e os horários, sem dados coletados (a ingestão é da Fase 5).
+    As Concluídas e as Interrompidas ganham dados coletados sintéticos (seed_demo_data); as Aguardando
+    dados ficam sem eles, como se o óculos ainda enviasse.
     """
     if db.scalar(select(Session.id).limit(1)) is not None:
         print("Sessões de exemplo: já existem.")
+        seed_demo_data(db)
         return
     users = {u.email: u for u in db.scalars(select(User))}
     patients = {p.code: p for p in db.scalars(select(Patient))}
@@ -267,6 +270,27 @@ def seed_demo_sessions(db: DbSession) -> None:
         created += 1
     db.commit()
     print(f"Sessões de exemplo: {created} criadas.")
+    seed_demo_data(db)
+
+
+def seed_demo_data(db: DbSession) -> None:
+    """Os dados coletados (app/seed_tracking.py) das sessões de exemplo Concluídas e Interrompidas que
+    ainda não os têm, inclusive as de um banco semeado antes de existir a análise."""
+    executed = {(title, code, owner): sequence for _, title, code, owner, status, _, _, sequence in DEMO_SESSIONS
+                if status in ("completed", "interrupted")}
+    pending = [
+        (session, executed[key])
+        for session in db.scalars(
+            select(Session).where(Session.status.in_(("completed", "interrupted")), Session.data_received_at.is_(None))
+            .order_by(Session.started_at)
+        )
+        if (key := (session.title, session.patient.code, session.owner.email)) in executed
+    ]
+    if not pending:
+        return
+    started = clock.monotonic()
+    done = sum(seed_tracking.generate(db, session, sequence) for session, sequence in pending)
+    print(f"Dados coletados de exemplo: {done} sessões ({clock.monotonic() - started:.0f} s).")
 
 
 def main(argv: list[str] | None = None) -> int:

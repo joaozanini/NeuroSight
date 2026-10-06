@@ -3,13 +3,14 @@ estímulos e enviar os dados da sessão depois do B.
 
 A chave é a QUESTPRO_DEVICE_KEY (cabeçalho X-Device-Key), e o óculos se identifica pelo X-Device-Id.
 Os estímulos só descem para o óculos vinculado à sessão; os dados só sobem do óculos que a executou.
-O JSON e os frames ficam em <media>/sessions/<id>/; validar o conteúdo e montar o MP4 é da Fase 5.
+O JSON (validado no envio, services/tracking.py) e os frames ficam em <media>/sessions/<id>/; o
+`complete` põe a sessão na fila de processamento (services/ingestion.py), que monta o MP4, analisa e
+passa a sessão para Concluída ou Interrompida.
 """
 import asyncio
 import json
 import logging
 import os
-import re
 import shutil
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
@@ -22,7 +23,7 @@ from ..config import settings
 from ..db import SessionLocal, get_db
 from ..models import Device, Session, utcnow
 from ..security import DeviceId, device_key_ok, valid_device_id
-from ..services import audit, execution
+from ..services import audit, execution, ingestion, tracking
 from ..services.live_hub import CLOSE, Connection, DeviceLive, hub
 from ..services.storage import storage
 
@@ -33,7 +34,7 @@ HELLO_TIMEOUT = 10
 SILENCE_TIMEOUT = 45
 DEVICE_STATES = ("idle", "loading", "ready", "running", "uploading")
 TRACKING_STATES = ("active", "no_permission", "unavailable", "off")
-FRAME_NAME = re.compile(r"^\d{1,8}\.jpg$")
+FRAME_NAME = tracking.FRAME_NAME
 JPEG_MAGIC = b"\xff\xd8\xff"
 MEDIA_TYPES = {"jpg": "image/jpeg", "png": "image/png", "mp4": "video/mp4"}
 
@@ -278,15 +279,19 @@ def _validate_tracking(path: str, session_id: str) -> dict:
             data = json.load(f)
     except (ValueError, UnicodeDecodeError):
         raise HTTPException(status_code=422, detail="o corpo não é um JSON válido")
-    if not isinstance(data, dict) or data.get("version") != 2 or not isinstance(data.get("meta"), dict):
-        raise HTTPException(status_code=422, detail="o JSON não segue o contrato v2 (version e meta)")
-    if data["meta"].get("sessionId") != session_id:
-        raise HTTPException(status_code=422, detail="o meta.sessionId não é o desta sessão")
+    try:
+        tracking.validate(data, session_id)
+    except tracking.TrackingError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     return data
 
 
 def _tracking_received(session_id: str, device_id: str, end_reason, request: Request) -> str:
-    """Grava o fim, se o `ended` não chegou pelo WebSocket, e devolve o status da sessão."""
+    """Grava o fim, se o `ended` não chegou pelo WebSocket, e devolve o status da sessão.
+
+    Um JSON reenviado depois do `complete` substitui o anterior: o envio volta a ficar em aberto até
+    o próximo `complete`, que processa os dados novos.
+    """
     with SessionLocal() as db:
         session = _executed_by(db, session_id, device_id)
         if session.status == "running":
@@ -294,6 +299,10 @@ def _tracking_received(session_id: str, device_id: str, end_reason, request: Req
             if execution.end(db, request, session.owner, session, reason, execution.device_agent(session.device)):
                 db.commit()
                 execution.announce_end(session)
+        elif session.data_received_at is not None:
+            session.data_received_at = None
+            session.analysis = None
+            db.commit()
         return session.status
 
 
@@ -362,7 +371,11 @@ def upload_frames(session_id: str, device_id: DeviceId, frames: list[UploadFile]
 
 @router.post("/device/sessions/{session_id}/complete")
 def complete_upload(session_id: str, device_id: DeviceId, db: DbSession = Depends(get_db)):
-    """Fim do envio. Devolve os quadros listados no JSON que ainda não chegaram."""
+    """Fim do envio. Devolve os quadros listados no JSON que ainda não chegaram; com tudo aqui, põe
+    a sessão na fila de processamento (o status muda quando ele termina)."""
+    session = _session(db, session_id)
+    if session.device_id == device_id and session.status in ("completed", "interrupted") and session.data_received_at:
+        return {"status": session.status, "missingFrames": []}  # o óculos repetiu o complete
     session = _executed_by(db, session_id, device_id)
     path = storage.session_tracking(session_id)
     if not os.path.isfile(path):
@@ -378,5 +391,6 @@ def complete_upload(session_id: str, device_id: DeviceId, db: DbSession = Depend
         session.data_received_at = utcnow()
         db.commit()
         logger.info("sessão %s: envio completo (%d quadros)", session_id, len(received))
+        ingestion.schedule(session_id)
     hub.update_device(device_id, state="idle", session_id=None)
     return {"status": session.status, "missingFrames": []}

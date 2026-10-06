@@ -109,8 +109,9 @@ def get_session(session_id) -> Session:
 def tracking(session_id, frames=(), end_reason="button_b"):
     return {
         "version": 2,
-        "meta": {"sessionId": session_id, "endReason": end_reason, "panel": {"widthM": 2.4, "heightM": 1.35,
-                                                                           "distanceM": 2.0}},
+        "meta": {"sessionId": session_id, "endReason": end_reason,
+                 "panel": {"widthM": 2.4, "heightM": 1.35, "distanceM": 2.0},
+                 "capture": {"width": 64, "height": 40, "fps": 30} if frames else None},
         "stimuli": [], "events": [], "gaze": [], "face": None,
         "frames": [{"idx": i + 1, "t": i / 30, "file": name} for i, name in enumerate(frames)],
     }

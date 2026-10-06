@@ -188,14 +188,14 @@ Todas com `X-Device-Key` e `X-Device-Id`. Os downloads aceitam `Range` (retomar 
 | Rota | Para quê |
 |---|---|
 | `GET /device/sessions/{sessionId}/stimuli/{stimulusId}` | Versão do estímulo para o óculos. Só para o óculos vinculado à sessão. |
-| `PUT /device/sessions/{sessionId}/tracking` | O JSON v2 (seção 4), `Content-Type: application/json`, até 512 MB. Reenviar substitui. |
+| `PUT /device/sessions/{sessionId}/tracking` | O JSON v2 (seção 4), `Content-Type: application/json`, até 512 MB, conferido na hora (seção 4.2). Reenviar substitui; depois do `complete`, reabre o envio até o próximo `complete`. |
 | `GET /device/sessions/{sessionId}/frames` | `{"received": ["000001.jpg", ...]}`: o que já chegou, para retomar. |
 | `POST /device/sessions/{sessionId}/frames` | Lote de JPEGs em multipart, campo `frames` (sugestão: 20 por lote), nome `NNNNNN.jpg`. Resposta `{"saved": [...], "rejected": [...], "receivedCount": N}`. Reenviar um nome sobrescreve. |
-| `POST /device/sessions/{sessionId}/complete` | Fim do envio. Resposta `{"status": "awaiting_data", "missingFrames": [...]}`; se faltar frame listado no JSON, o óculos reenvia e chama de novo. |
+| `POST /device/sessions/{sessionId}/complete` | Fim do envio. Resposta `{"status": "awaiting_data", "missingFrames": [...]}`; se faltar frame listado no JSON, o óculos reenvia e chama de novo. Sem faltas, o servidor processa os dados em segundo plano (monta o MP4, analisa) e passa a sessão para Concluída ou Interrompida. Repetir o `complete` de uma sessão já processada responde 200 com o status final. |
 
 Respostas de erro: `401` chave, `403` óculos que não é o da sessão, `404` sessão inexistente,
-`409` estado que não aceita a operação (ex.: enviar dados de uma sessão que nunca começou), `422`
-JSON fora do contrato (com `detail`).
+`409` estado que não aceita a operação (ex.: enviar dados de uma sessão que nunca começou ou que já
+foi processada), `422` JSON fora do contrato (com `detail`, ex.: "gaze[12]: t precisa ser um número").
 
 ## 4. JSON v2 da sessão (`tracking`)
 
@@ -295,6 +295,38 @@ TONGUE_RETREAT
 A legenda padrão da W17 usa `INNER_BROW_RAISER` (Sobrancelha interna elevada), `LIP_CORNER_PULLER`
 (Canto da boca puxado) e `EYES_CLOSED` (Olhos fechados), com a média dos lados L e R.
 
+### 4.2 O que o servidor confere
+
+No `PUT .../tracking` (`web/backend/app/services/tracking.py`), na ordem, parando no primeiro problema:
+
+- `version` 2, `meta.sessionId` desta sessão e `meta.panel` com `widthM`, `heightM` e `distanceM`
+  positivos; `meta.capture` nulo ou com `width`, `height` (inteiros) e `fps` positivos, e obrigatório
+  quando há `frames`; `meta.gazeHz` positivo, se vier; `meta.endReason` `button_b`, `interrupted` ou nulo.
+- `stimuli[]`: `position` (≥ 1), `stimulusId`, `kind` `image` ou `video`; `width`/`height` inteiros ou nulos.
+- `events[]`: `type` e `t` (≥ 0) em todos; `position` em `stimulus_on` e `stimulus_off`. Tipos
+  desconhecidos passam e são ignorados.
+- `gaze[]`: `t` número, `valid` booleano, `onStim` booleano (se vier), `stimUv` e `frameUv` `[u, v]` ou nulos.
+- `face`: nulo, ou `t` e `weights` do mesmo tamanho, com cada linha de `weights` no tamanho de
+  `meta.faceExpressions` (obrigatório nesse caso).
+- `frames[]`: `idx` inteiro, `t` número e `file` no formato `NNNNNN.jpg`.
+
+### 4.3 O que o servidor calcula
+
+A análise (`web/backend/app/services/analysis.py`, Fase 5) usa:
+
+- **Exibições**: do `stimulus_on` ao `stimulus_off`, ao `neutral_on` ou ao `session_end` (sem ele, até
+  a última coisa registrada). A tela neutra fica de fora; um estímulo que volta à tela é outra exibição.
+- **Fixações por I-DT**: só as amostras com `valid`, `onStim` e `stimUv` dentro de 0 a 1; janela de
+  pelo menos 100 ms com dispersão (amplitude horizontal + vertical) de até 1° de ângulo visual,
+  calculado pela geometria do painel e do estímulo nele. Uma falha (amostra inválida ou pausa de mais
+  de 2,5 períodos) corta a janela. Fixações separadas por menos de 75 ms e a menos de 0,5° viram uma.
+  Duração = do primeiro ao último instante, mais um período de amostragem.
+- **Amostras válidas**: as com `valid`, sobre todas as da exibição.
+- **Expressões**: média dos lados L e R das três da legenda padrão, em janelas de 100 ms.
+- **Gravação**: o MP4 tem fps constante (`meta.capture.fps`) com os frames na ordem de `idx`; o
+  instante de cada frame do vídeo é o `t` dele, e o olhar desenhado nele é a amostra válida mais
+  próxima (até 50 ms) com `frameUv`.
+
 ## 5. Lado do site (navegador)
 
 Para referência; o óculos não usa estas rotas.
@@ -342,7 +374,11 @@ responsável pela sessão (o `can_run` da Fase 3). O retrato:
 | Em andamento | Aguardando dados | `ended` do óculos (B) | `button_b` |
 | Em andamento | Aguardando dados | "Interromper sessão" (W15) | `interrupted` |
 | Em andamento | Aguardando dados | o óculos voltou sem a sessão (o app fechou no meio) ou o JSON chegou sem o `ended` | `disconnected` ou o `meta.endReason` |
-| Aguardando dados | Concluída ou Interrompida | processamento dos dados (Fase 5) | |
+| Aguardando dados | Concluída | processamento dos dados (depois do `complete`) | `button_b` |
+| Aguardando dados | Interrompida | processamento dos dados (depois do `complete`) | `interrupted` ou `disconnected` |
+
+Se o processamento falhar, a sessão continua Aguardando dados (a W16 mostra o motivo) e o servidor
+tenta de novo quando reinicia.
 
 O "Início de sessão" e o "Fim de sessão" ficam na auditoria em nome do responsável. No fim pelo B,
 o IP e o navegador do registro são os do óculos ("NeuroSight 1.0.0, Quest Pro 01").

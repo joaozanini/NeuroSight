@@ -18,8 +18,8 @@ from ..config import settings
 from ..db import get_db
 from ..models import Patient, Session, SessionShare, SessionStimulus, Stimulus, User
 from ..schemas.session import (
-    Person, SequenceItem, SessionCreate, SessionDetail, SessionPage, SessionPatient, SessionRef, SessionRow,
-    SessionStatus, SessionUpdate, ShareCandidate, VisibilityChange,
+    ExposureRow, Person, RecordingFile, SequenceItem, SessionCreate, SessionDetail, SessionFiles, SessionPage,
+    SessionPatient, SessionRef, SessionRow, SessionStatus, SessionUpdate, ShareCandidate, VisibilityChange,
 )
 from ..security import CurrentUser, require_permission
 from ..services import audit, permissions
@@ -44,6 +44,7 @@ class Access:
         self.patients = "patients.view" in granted
         self.run = "sessions.run" in granted
         self.visibility = "sessions.visibility" in granted
+        self.export = "sessions.export" in granted
 
     def can_edit(self, session: Session) -> bool:
         return self.run and (session.owner_id == self.user.id or self.all_sessions)
@@ -64,6 +65,13 @@ def _candidate(user: User) -> ShareCandidate:
     return ShareCandidate(id=user.id, name=user.name, role=user.role, role_label=permissions.ROLE_LABELS[user.role])
 
 
+def _files(analysis: dict) -> SessionFiles:
+    recording = analysis.get("recording") or {}
+    status = recording.get("status") if recording.get("status") in ("ready", "failed") else "none"
+    return SessionFiles(tracking_bytes=analysis.get("tracking_bytes") or 0,
+                        recording=RecordingFile(status=status, size_bytes=recording.get("bytes")))
+
+
 def _detail(session: Session, access: Access) -> SessionDetail:
     patient = session.patient
     duration = None
@@ -71,6 +79,8 @@ def _detail(session: Session, access: Access) -> SessionDetail:
         duration = (session.ended_at - session.started_at).total_seconds()
     source = session.duplicated_from
     shared = sorted((share.user for share in session.shares), key=lambda u: u.name.casefold())
+    data_status, data_error = rules.data_status(session)
+    ready = data_status == "ready"
     return SessionDetail(
         id=session.id, type=session.type, status=session.status, end_reason=session.end_reason, title=session.title,
         objective=session.objective, notes=session.notes, record=session.record, visibility=session.visibility,
@@ -97,9 +107,21 @@ def _detail(session: Session, access: Access) -> SessionDetail:
             SessionRef(id=source.id, title=source.title)
             if source and rules.can_view(source, access.user, access.all_sessions) else None
         ),
+        data_status=data_status,
+        data_error=data_error,
+        exposures=[
+            ExposureRow(
+                seq=e.seq, position=e.position, stimulus_id=e.stimulus_id, name=e.stimulus.name, kind=e.stimulus.kind,
+                archived=e.stimulus.status == "archived", thumbnail_url=_thumbnail(e.stimulus_id), on_t=e.on_t,
+                screen_seconds=round(e.off_t - e.on_t, 3),
+            )
+            for e in session.exposures
+        ] if ready else [],
+        files=_files(session.analysis) if ready else None,
         can_edit=access.can_edit(session),
         can_run=access.run and session.owner_id == access.user.id,
         can_change_visibility=access.visibility,
+        can_export=access.export,
     )
 
 
