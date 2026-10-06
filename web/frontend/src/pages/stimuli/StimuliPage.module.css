@@ -1,0 +1,114 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 30px;
+}
+
+.search {
+  flex: 0 1 320px;
+}
+
+/* 192 px no PNG; o Select reserva 44 px para a seta e "Todas as etiquetas" cortava. */
+.tagFilter {
+  flex: 0 0 218px;
+}
+
+.archived {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Quatro cartões por linha a 1440 px, como na W09. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
+  text-decoration: none;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: 0 1px 2px rgba(26, 36, 70, 0.06), 0 8px 24px rgba(26, 36, 70, 0.1);
+}
+
+.card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 16px;
+}
+
+.name {
+  overflow: hidden;
+  font-size: var(--font-size-control);
+  font-weight: var(--font-weight-semibold);
+  line-height: 26px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kind {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: var(--font-size-md);
+  line-height: 24px;
+  color: var(--color-text-muted);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 0;
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+  min-height: 1px;
+  margin-top: 24px;
+}
+
+@media (max-width: 1200px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .archived {
+    margin-left: 0;
+  }
+}

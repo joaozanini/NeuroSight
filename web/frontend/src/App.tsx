@@ -16,6 +16,11 @@ import AuditPage from './pages/admin/AuditPage'
 import PermissionsPage from './pages/admin/PermissionsPage'
 import UserFormPage from './pages/admin/UserFormPage'
 import UsersPage from './pages/admin/UsersPage'
+import PatientDetailPage from './pages/patients/PatientDetailPage'
+import PatientFormPage from './pages/patients/PatientFormPage'
+import PatientsPage from './pages/patients/PatientsPage'
+import StimuliPage from './pages/stimuli/StimuliPage'
+import StimulusDetailPage from './pages/stimuli/StimulusDetailPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import SetPasswordPage from './pages/auth/SetPasswordPage'
@@ -52,6 +57,13 @@ export default function App() {
             <Route key={screen.path} path={screen.path} element={<PlaceholderPage screen={screen} />} />
           ))}
           <Route path="/perfil" element={<ProfilePage />} />
+
+          <Route path="/pacientes" element={guarded('patients.view', <PatientsPage />)} />
+          <Route path="/pacientes/novo" element={guarded('patients.edit', <PatientFormPage />)} />
+          <Route path="/pacientes/:patientId" element={guarded('patients.view', <PatientDetailPage />)} />
+          <Route path="/pacientes/:patientId/editar" element={guarded('patients.edit', <PatientFormPage />)} />
+          <Route path="/estimulos" element={<StimuliPage />} />
+          <Route path="/estimulos/:stimulusId" element={<StimulusDetailPage />} />
 
           <Route path="/admin" element={<AdminIndex />} />
           <Route element={<AdminLayout />}>

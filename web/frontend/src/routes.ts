@@ -27,21 +27,6 @@ export const APP_SCREENS: ScreenRoute[] = [
     phase: 5,
     back: { to: '/sessoes/:sessionId', label: 'Detalhes da sessão' },
   },
-
-  { path: '/pacientes', title: 'Pacientes', prototypes: ['W06'], phase: 2 },
-  { path: '/pacientes/novo', title: 'Novo paciente', prototypes: ['W07'], phase: 2, back: { to: '/pacientes', label: 'Pacientes' } },
-  { path: '/pacientes/:patientId', title: 'Detalhes do paciente', prototypes: ['W08'], phase: 2, back: { to: '/pacientes', label: 'Pacientes' } },
-  {
-    path: '/pacientes/:patientId/editar',
-    title: 'Editar paciente',
-    prototypes: ['W07'],
-    phase: 2,
-    subtitle: 'As alterações ficam registradas na auditoria.',
-    back: { to: '/pacientes/:patientId', label: 'Paciente' },
-  },
-
-  { path: '/estimulos', title: 'Estímulos', prototypes: ['W09', 'W10'], phase: 2 },
-  { path: '/estimulos/:stimulusId', title: 'Detalhes do estímulo', prototypes: ['W11'], phase: 2, back: { to: '/estimulos', label: 'Estímulos' } },
 ]
 
 // Tela cheia, sem menu.
@@ -50,7 +35,6 @@ export const FULLSCREEN_SCREENS: ScreenRoute[] = [
 ]
 
 export const PHASE_NAMES: Record<number, string> = {
-  2: 'Pacientes e estímulos',
   3: 'Configuração de sessões',
   4: 'Execução ao vivo',
   5: 'Ingestão e análise',

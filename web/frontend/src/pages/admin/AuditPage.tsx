@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download } from 'lucide-react'
 import { AUDIT_PAGE_SIZE, auditApi, auditKeys } from '../../api/audit'
@@ -13,6 +12,7 @@ import type { Column } from '../../components/Table/Table'
 import TextLink from '../../components/TextLink/TextLink'
 import { formatDate, formatTime, sentence } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { useUrlFilters } from '../../lib/useUrlFilters'
 import AuditDetailModal from './AuditDetailModal'
 import { labelOf } from './auditLabels'
 import styles from './AuditPage.module.css'
@@ -37,7 +37,7 @@ export function periodStart(period: string, now = new Date()): string | undefine
 export default function AuditPage() {
   usePageTitle('Auditoria')
   const queryClient = useQueryClient()
-  const [params, setParams] = useSearchParams()
+  const [params, updateParams] = useUrlFilters()
   const period = params.get('periodo') ?? DEFAULT_PERIOD
   const page = Math.max(1, Number(params.get('pagina')) || 1)
   const query: AuditQuery = {
@@ -56,28 +56,11 @@ export default function AuditPage() {
   })
 
   function setFilter(key: string, value: string) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        if (value && !(key === 'periodo' && value === DEFAULT_PERIOD)) next.set(key, value)
-        else next.delete(key)
-        next.delete('pagina')
-        return next
-      },
-      { replace: true },
-    )
+    updateParams({ [key]: key === 'periodo' && value === DEFAULT_PERIOD ? null : value, pagina: null })
   }
 
   function setPage(value: number) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        if (value > 1) next.set('pagina', String(value))
-        else next.delete('pagina')
-        return next
-      },
-      { replace: true },
-    )
+    updateParams({ pagina: value })
   }
 
   const opts: AuditFilterOptions | undefined = options.data

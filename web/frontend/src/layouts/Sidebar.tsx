@@ -17,6 +17,8 @@ interface SidebarProps {
   user?: SidebarUser | null
   // "Administração" só para quem tem a permissão.
   showAdmin?: boolean
+  // "Pacientes" some para quem não pode ver pacientes.
+  showPatients?: boolean
   // Sessões em andamento ou aguardando dados; 0 ou vazio esconde o selo.
   sessionsBadge?: number
   onLogout?: () => void
@@ -48,7 +50,7 @@ function NavItem({ to, label, icon: Icon, end, badge }: NavItemProps) {
 }
 
 // Menu lateral (protótipo "Componente · Menu lateral").
-export default function Sidebar({ user, showAdmin = false, sessionsBadge, onLogout }: SidebarProps) {
+export default function Sidebar({ user, showAdmin = false, showPatients = true, sessionsBadge, onLogout }: SidebarProps) {
   return (
     <aside className={styles.sidebar}>
       <Link to="/" className={styles.brand}>
@@ -60,7 +62,7 @@ export default function Sidebar({ user, showAdmin = false, sessionsBadge, onLogo
         <ul className={styles.nav}>
           <NavItem to="/" end label="Início" icon={HomeIcon} />
           <NavItem to="/sessoes" label="Sessões" icon={CirclePlay} badge={sessionsBadge} />
-          <NavItem to="/pacientes" label="Pacientes" icon={UserRound} />
+          {showPatients && <NavItem to="/pacientes" label="Pacientes" icon={UserRound} />}
           <NavItem to="/estimulos" label="Estímulos" icon={Image} />
           {showAdmin && <NavItem to="/admin" label="Administração" icon={ShieldCheck} />}
         </ul>

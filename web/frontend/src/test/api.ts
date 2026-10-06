@@ -40,7 +40,13 @@ export function mockApi(routes: Record<string, Handler>) {
     const url = new URL(String(input), 'http://localhost')
     const method = init?.method ?? 'GET'
     const path = url.pathname.replace(/^\/api\/v1/, '')
-    const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
+    // JSON vira objeto; multipart (FormData) vira { campo: texto ou File }.
+    const body =
+      typeof init?.body === 'string'
+        ? JSON.parse(init.body)
+        : init?.body instanceof FormData
+          ? Object.fromEntries(init.body.entries())
+          : undefined
     const call = { method, path, query: url.searchParams, body }
     calls.push(call)
     for (const route of compiled) {

@@ -1,0 +1,84 @@
+/* W07: formulário de 720 px, duas colunas (código e data à esquerda). */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  max-width: 720px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sectionTitle {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 28px;
+}
+
+.row,
+.consentRow {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.code {
+  font-weight: var(--font-weight-semibold);
+}
+
+.rowHint {
+  margin-top: 8px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.consent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  float: left; /* o legend fica no fluxo do flex e respeita o espaço entre os itens */
+  width: 100%;
+  padding: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+}
+
+.signed {
+  margin-top: 0;
+}
+
+/* Sem rótulo próprio: alinha com a caixa da data (rótulo de 24 px + 8 px). */
+.file {
+  margin-top: 32px;
+}
+
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: -8px;
+}
+
+@media (max-width: 720px) {
+  .row,
+  .consentRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .file {
+    margin-top: 0;
+  }
+}
