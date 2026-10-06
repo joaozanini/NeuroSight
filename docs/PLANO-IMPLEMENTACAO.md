@@ -14,7 +14,7 @@
 | 3 Configuração de sessões | concluída | `fase-3-sessoes` (`5be29c9` backend, `8e79b2c` frontend) | Ver as notas da Fase 3 abaixo. |
 | 4 Execução ao vivo + simulador | concluída | `fase-4-ao-vivo` (`37e1ca8` backend e simulador, `cd33621` frontend) | Ver as notas da Fase 4 abaixo. |
 | 5 Ingestão e análise | concluída | `fase-5-ingestao-analise` (`80fe1c0` backend e simulador, `d323355` frontend) | Ver as notas da Fase 5 abaixo. |
-| 6 Início (dashboard) | não iniciada | | |
+| 6 Início (dashboard) | concluída | `fase-6-inicio` (`0c4f3db` backend, `ed0cc84` frontend) | Ver as notas da Fase 6 abaixo. |
 | 7 App do óculos (UE 5.5) | não iniciada | | |
 | 8 Deploy e documentação | não iniciada | | |
 
@@ -188,6 +188,26 @@
   óculos do TestClient e envia os dados do gerador) e `tests/test_simulator.py` (o simulador de
   verdade contra um uvicorn de teste, cerca de 10 s). No front, `pages/sessions/analysis/AnalysisPage.test.tsx`;
   o `test/setup.ts` desliga o canvas e simula o play e o pause do vídeo.
+
+### Notas da Fase 6 (para as próximas sessões)
+- **Peças**: `services/dashboard.py` (tudo calculado a cada pedido, sem tabela nova), `routers/dashboard.py`
+  (`GET /dashboard?tz=` e `GET /dashboard/badge`) e `schemas/dashboard.py`; `audit.summary(entry)` monta a
+  frase das "Últimas ações" ("Iniciou a sessão …", "Enviou 6 estímulos"). No site, `src/api/dashboard.ts`,
+  `pages/home/` (`HomePage` e os textos que dependem dos números em `homeText.ts`) e o selo no `AppLayout`.
+- **Visões**: pelo perfil. O admin vê as sessões que pode ver, "Usuários ativos" (com "Gerenciar
+  usuários") e a auditoria (com "Consultar a auditoria"); o pesquisador, só as sessões em que é o
+  responsável. O selo do menu, o subtítulo e "Precisam de atenção" contam o mesmo conjunto: Em andamento
+  e Aguardando dados.
+- **Períodos** no fuso do navegador (`tz`): o mês até agora contra o mesmo trecho do mês anterior; as
+  linhas de tendência são 8 semanas de 7 dias terminando agora (a de "Aguardando dados" é um retrato no
+  fim de cada semana) e, na auditoria, 8 dias.
+- **Selo**: chave `['sessions', 'badge']` do React Query, de propósito dentro de `['sessions']`: o que
+  invalida as sessões atualiza o selo. Também se atualiza a cada 30 s (o óculos muda o status sem passar
+  pelo navegador), como o Início.
+- **Placeholders**: acabaram. `routes.ts` e `PlaceholderPage` saíram; toda rota está no `App.tsx`.
+- **Auditoria com data**: `audit.record(..., at=)` só para o `app.seed`. O início e o fim na auditoria
+  ficaram em `execution.record_start`/`record_end`, usados pela execução e pelo seed.
+- **Testes**: `tests/test_dashboard.py`; no front, `pages/home/HomePage.test.tsx`.
 
 ### Decisões em aberto
 - **Servidor de produção** (domínio, proxy reverso existente): confirmar na Fase 8.
@@ -457,6 +477,47 @@ _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê
   com início, fim, amostras e fixações iguais às do `--truth` e o tempo até a 1ª fixação a até 14 ms,
   a gravação tocando com o círculo, o JSON baixado idêntico ao enviado, o CSV, o MP4 e as três
   Exportações na W22 e na W23.
+- **Fase 6, decisões combinadas com o usuário** (no início da fase): a variação dos KPIs do mês compara
+  com o mesmo trecho do mês anterior (1 a 6 de outubro contra 1 a 6 de setembro), e não com o mês
+  inteiro; as linhas de tendência mostram as últimas 8 semanas; e o `--demo` passou a datar os registros
+  da auditoria (usuários, pacientes, estímulos e sessões na data do que representam) e a registrar o
+  início e o fim das sessões executadas (o fim pelo B com o user-agent do óculos). Só vale para bancos
+  semeados de novo; antes, tudo caía em "hoje".
+- **Fase 6, rota a mais**: `GET /dashboard/badge`, porque o menu consulta o selo em todas as telas e o
+  `/dashboard` inteiro é mais pesado.
+- **Fase 6, o que cada número conta** (o protótipo é estático): uma sessão conta no período em que
+  começou (as Configuradas não entram); "Pacientes acompanhados" são os pacientes distintos dessas
+  sessões; "Tempo de coleta" soma `ended_at − started_at` das já encerradas; "Aguardando dados" vai do fim
+  da execução até o `data_received_at` (a linha é um retrato no fim de cada semana, e o último ponto é o
+  valor do cartão). Em "Usuários ativos", o "+N" são os ativos cadastrados no mês e a linha usa a data
+  de cadastro, porque não há histórico de quando cada um passou a ativo. "Registros na auditoria hoje"
+  compara com ontem até a mesma hora. Sem mudança ou sem base de comparação, a variação some, e o
+  rodapé diz "neste mês" no lugar de "desde <mês>".
+- **Fase 6, W04** (o protótipo é estático):
+  - o subtítulo vai por extenso até dez ("Uma sessão está…", "Três sessões precisam…") e tem a versão
+    "Nenhuma …"; a seção "Precisam de atenção" vazia diz "Nenhuma sessão em andamento ou aguardando dados.";
+  - "Últimas ações da auditoria" deixa os logins de fora (como no PNG, que mostra 7 registros hoje e só 3
+    ações do dia); o número do cartão conta todos;
+  - "Sessões recentes" deixa de fora as Em andamento, como os dois PNGs (que omitem a da P-014), porque
+    elas já estão em "Precisam de atenção";
+  - horários "Iniciada às 14:10", "ontem às …" ou "em dd/mm/aaaa às …"; depois do fim, "recebendo dados",
+    "processando os dados" ou "falha no processamento", e no cartão "em envio", "processando" ou "com
+    falha";
+  - "Abrir controle" só para o responsável com "Criar e executar"; os outros veem "Ver sessão". Os botões
+    do topo seguem as permissões (Novo paciente, Enviar estímulos, Nova sessão);
+  - a página se atualiza a cada 30 s. Abaixo de 1180 px, os KPIs ficam em 2 × 2 e o horário desce para
+    baixo da sessão; o `PageHeader` deixa as ações descerem quando falta largura (a 1024 px, os três
+    botões espremiam o "Olá, Carlos"), sem mudar nada nas larguras dos protótipos.
+- **Fase 6, `UtcDateTime`**: passa a converter para UTC também na ida. O SQLite descartava o fuso de um
+  horário fora de UTC (o começo do mês em São Paulo virava 00:00 UTC); no PostgreSQL não mudava nada.
+- **Fase 6, verificação**: além dos testes, um PostgreSQL descartável com o `--demo` e a API servindo o
+  build. Um conferidor fora do repositório recalculou com SQL próprio todos os números do `/dashboard`
+  (Ana e Carlos: KPIs, mês anterior, linhas, atenção, recentes e auditoria), e todos bateram. Depois, num
+  Chromium headless com o simulador, a sessão nova de Ana foi preparada e iniciada pela W14: o Início
+  passou de duas a três sessões (selo 2 → 3, "Abrir controle" para Ana e "Ver sessão" com o responsável
+  para o admin, "Iniciou a sessão …" na auditoria). Depois do B, "processando os dados" e a Concluída:
+  selo de volta a 2, "Sessões no mês" +1, "Tempo de coleta" +20,0 s (a duração da sessão), a sessão no
+  topo das recentes com 2 estímulos e "Encerrou a sessão …" na auditoria. Capturas a 1440 e 1024 px.
 
 ---
 
