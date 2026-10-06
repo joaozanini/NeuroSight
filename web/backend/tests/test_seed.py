@@ -1,11 +1,20 @@
-"""`python -m app.seed`: primeiro admin com convite, matriz padrão e os usuários de exemplo."""
-from sqlalchemy import select
+"""`python -m app.seed`: primeiro admin com convite, matriz padrão e os dados de exemplo."""
+import dataclasses
 
-from app import seed
+import pytest
+from sqlalchemy import func, select
+
+from app import seed, seed_media
 from app.db import SessionLocal
-from app.models import RolePermission, User
+from app.models import AuditLog, Patient, RolePermission, Stimulus, User
 
-from .accounts import API, token_from
+from .accounts import API, login, token_from
+
+
+@pytest.fixture(autouse=True)
+def short_demo_videos(monkeypatch):
+    """Os vídeos de exemplo têm 45 s e 80 s; nos testes, 1 s basta."""
+    monkeypatch.setattr(seed_media, "VIDEOS", [dataclasses.replace(v, seconds=1) for v in seed_media.VIDEOS])
 
 
 def users():
@@ -54,3 +63,34 @@ def test_demo_users_are_created_once(client, capsys):
     assert r.status_code == 200
     seed.main(["--demo"])
     assert len(users()) == 8
+
+
+def test_demo_creates_patients_and_stimuli_once(client, capsys):
+    assert seed.main(["--demo"]) == 0
+    with SessionLocal() as db:
+        codes = sorted(db.scalars(select(Patient.code)))
+        assert codes == [f"P-{i:03d}" for i in range(1, 16)]
+        mariana = db.scalar(select(Patient).where(Patient.code == "P-014"))
+        assert (mariana.name, mariana.consent_file_name) == ("Mariana Alves", "termo-P-014.pdf")
+        stimuli = list(db.scalars(select(Stimulus)))
+        assert {s.status for s in stimuli} == {"active"}
+        assert {s.device_status for s in stimuli} == {"ready"}
+        assert sum(s.kind == "video" for s in stimuli) == 2
+        batch = db.scalar(select(AuditLog).where(AuditLog.entity_type == "stimulus"))
+        assert batch.entity_label == "15 imagens e 2 vídeos enviados à biblioteca"
+        assert batch.user_name == "Ana Souza"
+    out = capsys.readouterr().out
+    assert "Pacientes de exemplo: 15 criados." in out
+
+    seed.main(["--demo"])
+    with SessionLocal() as db:
+        assert db.scalar(select(func.count()).select_from(Patient)) == 15
+        assert db.scalar(select(func.count()).select_from(Stimulus)) == len(seed_media.IMAGES) + 2
+    assert "Estímulos de exemplo: já existem." in capsys.readouterr().out
+
+    login(client, "ana.souza@exemplo.com", seed.DEMO_PASSWORD)
+    page = client.get(f"{API}/stimuli").json()
+    assert page["counts"] == {"total": 17, "images": 15, "videos": 2}
+    assert client.get(f"{API}/patients/next-code").json() == {"code": "P-016"}
+    pid = client.get(f"{API}/patients", params={"q": "P-014"}).json()["items"][0]["id"]
+    assert client.get(f"{API}/patients/{pid}/consent").content.startswith(b"%PDF-")

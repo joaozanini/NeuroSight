@@ -16,6 +16,7 @@ ACTION_LABELS = {
     "login": "Login",
     "create": "Criação",
     "update": "Edição",
+    "delete": "Exclusão",
     "invite": "Envio de convite",
     "password_reset": "Redefinição de senha",
     "visibility_change": "Mudança de visibilidade",

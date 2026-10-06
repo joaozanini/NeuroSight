@@ -5,10 +5,12 @@ banco ao gerar migrações.
 """
 from .audit import AuditLog
 from .base import Base, JSONType, UtcDateTime, new_id, utcnow
+from .patient import Patient
 from .session import Session
+from .stimulus import Stimulus, StimulusTag
 from .user import AuthToken, RolePermission, User
 
 __all__ = [
-    "AuditLog", "AuthToken", "Base", "JSONType", "RolePermission", "Session", "User", "UtcDateTime",
-    "new_id", "utcnow",
+    "AuditLog", "AuthToken", "Base", "JSONType", "Patient", "RolePermission", "Session", "Stimulus",
+    "StimulusTag", "User", "UtcDateTime", "new_id", "utcnow",
 ]

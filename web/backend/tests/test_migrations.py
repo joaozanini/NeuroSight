@@ -32,7 +32,8 @@ def engine(request, tmp_path):
         eng = create_engine(PG_URL)
         with eng.begin() as conn:
             conn.execute(text(
-                "DROP TABLE IF EXISTS audit_log, role_permissions, auth_tokens, users, sessions, alembic_version CASCADE"
+                "DROP TABLE IF EXISTS stimulus_tags, stimuli, patients, audit_log, role_permissions, auth_tokens, users, "
+                "sessions, alembic_version CASCADE"
             ))
             conn.execute(text("DROP FUNCTION IF EXISTS audit_log_read_only() CASCADE"))
     yield eng

@@ -15,9 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from .config import settings
 from .db import migrate
 from .logging_config import setup_logging
-from .routers import audit, auth, ingest, me, permissions, sessions, users
+from .routers import audit, auth, ingest, me, patients, permissions, sessions, stimuli, users
 from .schemas.common import Health
 from .security import require_api_key
+from .services.stimuli import resume_pending
 
 setup_logging(settings.log_level)
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     os.makedirs(settings.media_root, exist_ok=True)
     migrate()
+    resume_pending()
     logger.info(
         "API pronta: mídia em %s, site estático %s",
         os.path.abspath(settings.media_root), _static if _serves_site else "desligado (modo dev)",
@@ -57,6 +59,8 @@ app.include_router(me.router, prefix=settings.api_prefix, tags=["me"])
 app.include_router(users.router, prefix=settings.api_prefix, tags=["users"])
 app.include_router(permissions.router, prefix=settings.api_prefix, tags=["permissions"])
 app.include_router(audit.router, prefix=settings.api_prefix, tags=["audit"])
+app.include_router(patients.router, prefix=settings.api_prefix, tags=["patients"])
+app.include_router(stimuli.router, prefix=settings.api_prefix, tags=["stimuli"])
 
 
 @app.get("/healthz", response_model=Health)
