@@ -53,10 +53,12 @@ def clean_state(request):
 
     from app.db import engine, migrate
     from app.models import Base
+    from app.services.live_hub import hub
     from app.services.ratelimit import login_limiter
 
     request.getfixturevalue("client").cookies.clear()
     login_limiter.clear()
+    hub.reset()
     Base.metadata.drop_all(engine)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS alembic_version"))

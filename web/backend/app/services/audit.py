@@ -6,7 +6,7 @@ registro continuar fiel mesmo que os rótulos mudem depois.
 """
 from typing import Any, Mapping
 
-from fastapi import Request
+from starlette.requests import HTTPConnection
 from sqlalchemy.orm import Session as DbSession
 
 from ..models import AuditLog, User
@@ -38,27 +38,31 @@ ENTITY_LABELS = {
 Change = dict[str, Any]
 
 
-def client_ip(request: Request | None) -> str | None:
+def client_ip(request: HTTPConnection | None) -> str | None:
     # Atrás do proxy, o uvicorn com --proxy-headers já põe aqui o IP real (X-Forwarded-For).
     return request.client.host if request is not None and request.client else None
 
 
-def user_agent(request: Request | None) -> str | None:
+def user_agent(request: HTTPConnection | None) -> str | None:
     ua = request.headers.get("user-agent") if request is not None else None
     return ua[:512] if ua else None
 
 
 def record(
     db: DbSession,
-    request: Request | None,
+    request: HTTPConnection | None,
     actor: User | None,
     action: str,
     entity_type: str,
     entity_label: str,
     entity_id: str | None = None,
     changes: list[Change] | None = None,
+    agent: str | None = None,
 ) -> AuditLog:
-    """Acrescenta o registro na sessão do banco (o commit é de quem chamou)."""
+    """Acrescenta o registro na sessão do banco (o commit é de quem chamou).
+
+    `agent` substitui o user-agent da requisição (o fim de sessão pelo B vem do óculos).
+    """
     entry = AuditLog(
         user_id=actor.id if actor else None,
         user_name=actor.name if actor else None,
@@ -68,7 +72,7 @@ def record(
         entity_id=entity_id,
         entity_label=entity_label[:255],
         ip=client_ip(request),
-        user_agent=user_agent(request),
+        user_agent=agent[:512] if agent else user_agent(request),
         changes=changes or [],
     )
     db.add(entry)

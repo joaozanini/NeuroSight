@@ -15,7 +15,9 @@ from fastapi.staticfiles import StaticFiles
 from .config import settings
 from .db import migrate
 from .logging_config import setup_logging
-from .routers import audit, auth, legacy_sessions, me, patients, permissions, sessions, stimuli, users
+from .routers import (
+    audit, auth, device, legacy_sessions, live, me, patients, permissions, sessions, stimuli, users,
+)
 from .schemas.common import Health
 from .services.stimuli import resume_pending
 
@@ -32,6 +34,8 @@ async def lifespan(app: FastAPI):
         "API pronta: mídia em %s, site estático %s",
         os.path.abspath(settings.media_root), _static if _serves_site else "desligado (modo dev)",
     )
+    if _serves_site and not settings.device_key:
+        logger.warning("QUESTPRO_DEVICE_KEY vazia: qualquer um pode se conectar como óculos")
     if _serves_site and "localhost" in settings.public_base_url:
         logger.warning(
             "os links de convite e de redefinição apontam para %s; defina QUESTPRO_PUBLIC_BASE_URL "
@@ -40,7 +44,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="NeuroSight API", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="NeuroSight API", version="0.5.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +57,8 @@ app.add_middleware(
 )
 
 app.include_router(sessions.router, prefix=settings.api_prefix, tags=["sessions"])
+app.include_router(live.router, prefix=settings.api_prefix, tags=["live"])
+app.include_router(device.router, prefix=settings.api_prefix, tags=["device"])
 app.include_router(legacy_sessions.router, prefix=settings.api_prefix, tags=["legacy"])
 app.include_router(auth.router, prefix=settings.api_prefix, tags=["auth"])
 app.include_router(me.router, prefix=settings.api_prefix, tags=["me"])

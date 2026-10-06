@@ -32,7 +32,7 @@ def engine(request, tmp_path):
         eng = create_engine(PG_URL)
         with eng.begin() as conn:
             conn.execute(text(
-                "DROP TABLE IF EXISTS session_markers, session_shares, session_stimuli, sessions, legacy_sessions, "
+                "DROP TABLE IF EXISTS session_markers, session_shares, session_stimuli, sessions, devices, legacy_sessions, "
                 "stimulus_tags, stimuli, patients, audit_log, role_permissions, auth_tokens, users, alembic_version CASCADE"
             ))
             conn.execute(text("DROP FUNCTION IF EXISTS audit_log_read_only() CASCADE"))
@@ -172,3 +172,13 @@ def test_accounts_migration_downgrades_to_the_baseline(engine):
         command.downgrade(alembic_config(conn), BASELINE_REVISION)
     assert current_revision(engine) == BASELINE_REVISION
     assert set(inspect(engine).get_table_names()) == {"sessions", "alembic_version"}
+
+
+def test_devices_migration_goes_back_and_forth(engine):
+    migrate(engine)
+    with engine.begin() as conn:
+        command.downgrade(alembic_config(conn), "0004_sessions")
+    assert "devices" not in inspect(engine).get_table_names()
+    assert "device_id" not in {c["name"] for c in inspect(engine).get_columns("sessions")}
+    migrate(engine)
+    assert current_revision(engine) == HEAD and schema_diff(engine) == []

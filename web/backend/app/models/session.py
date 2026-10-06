@@ -1,8 +1,9 @@
 """Sessões (W12–W18): o que o óculos vai mostrar a um paciente, configurado no site.
 
 Ciclo do status: Configurada → Em andamento → Aguardando dados → Concluída ou Interrompida. A
-sessão nasce Configurada pelo assistente (W13); as outras transições chegam nas fases 4 e 5, com o
-motivo do fim em `end_reason` (botão B, interrompida pelo pesquisador, queda).
+sessão nasce Configurada pelo assistente (W13), começa e termina pela execução ao vivo (W14, W15,
+com o motivo do fim em `end_reason`: botão B, interrompida pelo pesquisador, queda) e fecha depois
+do processamento dos dados (Fase 5).
 
 A sequência (`session_stimuli`) guarda a ordem e, nas imagens, o tempo de tela; sem tempo, a troca
 é manual. Vídeos avançam sozinhos ao terminar.
@@ -14,6 +15,7 @@ from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text, Unique
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, BigIntPK, UtcDateTime, new_id, utcnow
+from .device import Device
 from .patient import Patient
 from .stimulus import Stimulus
 from .user import User
@@ -49,10 +51,15 @@ class Session(Base):
     updated_at = mapped_column(UtcDateTime, default=utcnow, onupdate=utcnow, nullable=False)
     started_at = mapped_column(UtcDateTime, nullable=True)
     ended_at = mapped_column(UtcDateTime, nullable=True)
+    # O óculos que executou a sessão: só ele envia os dados dela.
+    device_id: Mapped[str | None] = mapped_column(ForeignKey("devices.id"), index=True, nullable=True)
+    # Quando o óculos terminou de enviar o JSON e a gravação (o `complete`).
+    data_received_at = mapped_column(UtcDateTime, nullable=True)
 
     patient: Mapped[Patient] = relationship(lazy="joined")
     owner: Mapped[User] = relationship(lazy="joined")
     duplicated_from: Mapped["Session | None"] = relationship(remote_side=[id], lazy="select")
+    device: Mapped[Device | None] = relationship(lazy="select")
     items: Mapped[list["SessionStimulus"]] = relationship(
         back_populates="session", cascade="all, delete-orphan", order_by="SessionStimulus.position",
         lazy="selectin",
@@ -94,7 +101,7 @@ class SessionShare(Base):
 class SessionMarker(Base):
     """Marcação feita pelo pesquisador durante a sessão (W15), com `t` em segundos desde o início.
 
-    Fica só no servidor; a tela ao vivo chega na Fase 4.
+    Fica só no servidor (o óculos não sabe delas).
     """
 
     __tablename__ = "session_markers"

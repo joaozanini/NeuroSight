@@ -6,6 +6,7 @@ Layout:
   <media_root>/<id>/frames/*.jpg e video.mp4 (fluxo antigo, só leitura: o caminho do vídeo fica na linha)
   <media_root>/stimuli/<id>/original.<ext>, thumb.jpg e device.<ext>
   <media_root>/patients/<id>/<chave>.pdf  (TCLE)
+  <media_root>/sessions/<id>/tracking.json e frames/*.jpg (o que o óculos envia depois do B)
 """
 import os
 import shutil
@@ -33,6 +34,17 @@ class LocalDiskStorage:
 
     def delete_stimulus(self, stimulus_id: str) -> None:
         shutil.rmtree(self.stimulus_dir(stimulus_id), ignore_errors=True)
+
+    # ---- Sessões ----
+
+    def session_dir(self, session_id: str) -> str:
+        return os.path.join(self.root, "sessions", session_id)
+
+    def session_tracking(self, session_id: str) -> str:
+        return os.path.join(self.session_dir(session_id), "tracking.json")
+
+    def session_frames_dir(self, session_id: str) -> str:
+        return os.path.join(self.session_dir(session_id), "frames")
 
     # ---- Pacientes ----
 

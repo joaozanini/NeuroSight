@@ -67,6 +67,17 @@ class Settings(BaseSettings):
     # Rascunhos de estímulos (enviados e nunca salvos na biblioteca) somem depois deste prazo.
     draft_hours: int = 24
 
+    # ---- Execução ao vivo (docs/protocolo-oculos.md) ----
+    # Chave que o óculos manda no X-Device-Key (WebSocket e rotas /device). Vazia = aberta (só no dev).
+    device_key: str = ""
+    # Captura da gravação pedida ao óculos: menor = menos banda para subir depois do B.
+    capture_width: int = 1024
+    capture_height: int = 1024
+    capture_fps: int = 30
+    capture_jpeg_quality: int = 80
+    # Tamanho máximo do JSON da sessão enviado pelo óculos.
+    max_tracking_mb: int = 512
+
     @property
     def smtp_enabled(self) -> bool:
         return bool(self.smtp_host)
