@@ -33,6 +33,11 @@ async def lifespan(app: FastAPI):
         "API pronta: mídia em %s, site estático %s",
         os.path.abspath(settings.media_root), _static if _serves_site else "desligado (modo dev)",
     )
+    if _serves_site and "localhost" in settings.public_base_url:
+        logger.warning(
+            "os links de convite e de redefinição apontam para %s; defina QUESTPRO_PUBLIC_BASE_URL "
+            "com o endereço do servidor", settings.public_base_url,
+        )
     yield
 
 

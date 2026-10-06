@@ -1,4 +1,7 @@
-"""Leitura: lista paginada (sem samples), detalhe (com tudo), vídeo (Range) e delete."""
+"""Leitura: lista paginada (sem samples), detalhe (com tudo), vídeo (Range) e delete.
+
+Com QUESTPRO_API_KEY definida, ler exige o login do site ou a X-Api-Key, e apagar exige a chave.
+"""
 import logging
 import os
 
@@ -11,10 +14,10 @@ from ..config import settings
 from ..db import get_db
 from ..models import Session
 from ..schemas.session import SessionDeleted, SessionDetail, SessionPage, SessionSummary
-from ..security import require_api_key
+from ..security import require_api_key, require_reader
 from ..services.storage import storage
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_reader)])
 logger = logging.getLogger(__name__)
 
 

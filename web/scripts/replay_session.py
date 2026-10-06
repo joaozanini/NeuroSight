@@ -81,7 +81,7 @@ def main():
         # A montagem roda em background: acompanha o status até complete/failed.
         for _ in range(120):
             time.sleep(2)
-            d = requests.get(f"{args.api}/sessions/{server_id}").json()
+            d = requests.get(f"{args.api}/sessions/{server_id}", headers=auth).json()
             st = d.get("status")
             print(f"  status: {st}")
             if st in ("complete", "failed"):

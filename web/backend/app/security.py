@@ -5,7 +5,8 @@ então um usuário desativado (ou que trocou a senha em outro lugar) perde o ace
 `require_permission(...)` consulta a matriz da W21 também a cada request.
 
 Óculos: os endpoints de escrita do fluxo antigo (ingestão e delete) exigem X-Api-Key quando
-QUESTPRO_API_KEY está definida. Sem ela, nada é exigido (modo dev).
+QUESTPRO_API_KEY está definida. A leitura do fluxo antigo aceita a mesma chave ou o login do site.
+Sem a chave configurada, nada disso é exigido (modo dev).
 """
 import secrets
 from typing import Annotated
@@ -46,20 +47,46 @@ def clear_session_cookie(response: Response) -> None:
     response.delete_cookie(tokens.SESSION_COOKIE, path="/", httponly=True, secure=settings.cookie_secure, samesite="lax")
 
 
-def get_current_user(request: Request, response: Response, db: DbSession = Depends(get_db)) -> User:
+def _logged_user(request: Request, response: Response, db: DbSession) -> User | None:
+    """O usuário do cookie, se ele for válido e o usuário estiver ativo (renova o cookie velho)."""
     raw = request.cookies.get(tokens.SESSION_COOKIE)
     payload = tokens.decode_session(raw) if raw else None
     if payload is None:
-        raise HTTPException(status_code=401, detail=NOT_AUTHENTICATED)
+        return None
     user = db.get(User, payload["sub"])
     if user is None or user.status != "active" or payload.get("sv") != user.session_version:
-        raise HTTPException(status_code=401, detail=NOT_AUTHENTICATED)
+        return None
     if tokens.should_renew(payload):
         set_session_cookie(response, user)
     return user
 
 
+def get_current_user(request: Request, response: Response, db: DbSession = Depends(get_db)) -> User:
+    user = _logged_user(request, response, db)
+    if user is None:
+        raise HTTPException(status_code=401, detail=NOT_AUTHENTICATED)
+    return user
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def require_reader(
+    request: Request,
+    response: Response,
+    x_api_key: str | None = Header(default=None, alias="X-Api-Key"),
+    db: DbSession = Depends(get_db),
+) -> None:
+    """Leitura do fluxo antigo: quem está logado no site ou o script com a X-Api-Key.
+
+    Sem QUESTPRO_API_KEY (dev) fica aberta, como a escrita.
+    """
+    if not settings.api_key:
+        return
+    if x_api_key and secrets.compare_digest(x_api_key, settings.api_key):
+        return
+    if _logged_user(request, response, db) is None:
+        raise HTTPException(status_code=401, detail=NOT_AUTHENTICATED)
 
 
 def require_permission(*required: str):

@@ -48,9 +48,14 @@ Defina **obrigatoriamente**:
 QUESTPRO_API_KEY=uma-chave-longa-e-aleatoria-aqui     # ex.: sair de `openssl rand -hex 24`
 QUESTPRO_DB_PASSWORD=outra-senha-forte
 QUESTPRO_HTTP_PORT=8000
+QUESTPRO_PUBLIC_BASE_URL=http://IP-DO-SERVIDOR:8000      # endereço do site, vai nos links dos e-mails
 ```
-> A `QUESTPRO_API_KEY` protege o upload e o delete. Sem ela definida a API fica **aberta na
-> internet** — não faça isso.
+> A `QUESTPRO_API_KEY` protege o upload e o delete, e a leitura das sessões antigas (que também
+> aceita o login do site). Sem ela definida a API fica **aberta na internet** — não faça isso.
+
+Para os convites e as redefinições de senha saírem por e-mail, defina também o SMTP
+(`QUESTPRO_SMTP_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_FROM` e `_SECURITY`; veja o
+`.env.example`). Sem SMTP o site funciona igual: o admin copia o link na tela.
 
 ## 4. Subir
 
@@ -68,13 +73,11 @@ do banco: `docker compose exec app alembic current`.
 O site exige login. Crie o primeiro admin uma vez (o link do convite aparece no terminal):
 
 ```bash
-docker compose exec -e QUESTPRO_PUBLIC_BASE_URL=http://SEU-SERVIDOR:8000 app \
-  python -m app.seed --admin-email voce@lab.br --admin-name "Seu Nome"
+docker compose exec app python -m app.seed --admin-email voce@lab.br --admin-name "Seu Nome"
 ```
 
-> Até a Fase 8 do plano, o `docker-compose.yml` não repassa as variáveis de e-mail e de endereço
-> do site (`QUESTPRO_SMTP_*`, `QUESTPRO_PUBLIC_BASE_URL`): os convites que o admin cria pelo site
-> mostram um link com `localhost:5173`, que precisa ter o endereço trocado à mão.
+Se o log da API avisar que os links apontam para `localhost`, falta a `QUESTPRO_PUBLIC_BASE_URL`
+no `.env` (depois de mudar o `.env`, rode `docker compose up -d` de novo).
 
 ## 5. Testar (nesta ordem — cada passo isola uma camada)
 
