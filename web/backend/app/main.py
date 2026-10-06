@@ -16,7 +16,8 @@ from .config import settings
 from .db import migrate
 from .logging_config import setup_logging
 from .routers import (
-    audit, auth, device, legacy_sessions, live, me, patients, permissions, session_data, sessions, stimuli, users,
+    audit, auth, dashboard, device, legacy_sessions, live, me, patients, permissions, session_data, sessions,
+    stimuli, users,
 )
 from .schemas.common import Health
 from .services import ingestion
@@ -46,7 +47,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="NeuroSight API", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="NeuroSight API", version="0.6.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,6 +59,7 @@ app.add_middleware(
     expose_headers=["Content-Range", "Accept-Ranges", "Content-Length"],
 )
 
+app.include_router(dashboard.router, prefix=settings.api_prefix, tags=["dashboard"])
 app.include_router(sessions.router, prefix=settings.api_prefix, tags=["sessions"])
 app.include_router(session_data.router, prefix=settings.api_prefix, tags=["session data"])
 app.include_router(live.router, prefix=settings.api_prefix, tags=["live"])

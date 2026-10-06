@@ -110,11 +110,17 @@ def start(db: DbSession, request: HTTPConnection, actor: User, session: Session,
     session.status = "running"
     session.started_at = started_at
     session.device_id = device.id
+    record_start(db, request, actor, session, device.name)
+    return started_at
+
+
+def record_start(db: DbSession, request: HTTPConnection | None, actor: User | None, session: Session,
+                 device_name: str | None, at: datetime | None = None) -> None:
+    """O início na auditoria (também usado pelo `app.seed`, com `at`)."""
     audit.record(db, request, actor, "session_start", "session", rules.audit_label(session), session.id, [
         audit.change("status", START_LABELS["status"], rules.STATUS_LABELS["configured"], rules.STATUS_LABELS["running"]),
-        audit.change("device", START_LABELS["device"], None, device.name),
-    ])
-    return started_at
+        audit.change("device", START_LABELS["device"], None, device_name),
+    ], at=at)
 
 
 def end(db: DbSession, request: HTTPConnection | None, actor: User | None, session: Session, reason: str,
@@ -128,14 +134,20 @@ def end(db: DbSession, request: HTTPConnection | None, actor: User | None, sessi
     session.status = "awaiting_data"
     session.end_reason = reason
     session.ended_at = utcnow()
+    record_end(db, request, actor, session, agent=agent)
+    logger.info("sessão %s encerrada (%s)", session.id, reason)
+    return True
+
+
+def record_end(db: DbSession, request: HTTPConnection | None, actor: User | None, session: Session,
+               agent: str | None = None, at: datetime | None = None) -> None:
+    """O fim na auditoria, com o motivo e a duração (também usado pelo `app.seed`, com `at`)."""
     duration = (session.ended_at - session.started_at).total_seconds() if session.started_at else None
     audit.record(db, request, actor, "session_end", "session", rules.audit_label(session), session.id, [
         audit.change("status", END_LABELS["status"], rules.STATUS_LABELS["running"], rules.STATUS_LABELS["awaiting_data"]),
-        audit.change("end_reason", END_LABELS["end_reason"], None, END_REASON_LABELS[reason]),
+        audit.change("end_reason", END_LABELS["end_reason"], None, END_REASON_LABELS[session.end_reason]),
         audit.change("duration", END_LABELS["duration"], None, format_duration(duration) if duration is not None else None),
-    ], agent=agent)
-    logger.info("sessão %s encerrada (%s)", session.id, reason)
-    return True
+    ], agent=agent, at=at)
 
 
 def announce_end(session: Session) -> None:

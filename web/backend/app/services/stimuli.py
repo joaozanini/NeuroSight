@@ -11,7 +11,7 @@ import re
 import shutil
 import threading
 import unicodedata
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import BinaryIO
 
 from sqlalchemy import delete, func, select, text
@@ -105,13 +105,16 @@ def summary(stimulus: Stimulus) -> str:
     return ", ".join(parts)
 
 
-def audit_saved(db: DbSession, request, actor: User | None, saved: list[Stimulus]) -> None:
-    """Um registro só para o que entrou junto na biblioteca, com uma linha por estímulo (W22, W23)."""
+def audit_saved(db: DbSession, request, actor: User | None, saved: list[Stimulus],
+                at: datetime | None = None) -> None:
+    """Um registro só para o que entrou junto na biblioteca, com uma linha por estímulo (W22, W23).
+
+    `at` só para os exemplos do `app.seed`."""
     changes = [audit.change(f"stimulus:{s.id}", s.name, None, summary(s)) for s in saved]
     if len(saved) == 1:
-        audit.record(db, request, actor, "create", "stimulus", saved[0].name, saved[0].id, changes)
+        audit.record(db, request, actor, "create", "stimulus", saved[0].name, saved[0].id, changes, at=at)
     else:
-        audit.record(db, request, actor, "create", "stimulus", batch_label(saved), None, changes)
+        audit.record(db, request, actor, "create", "stimulus", batch_label(saved), None, changes, at=at)
 
 
 def usage_count(db: DbSession, stimulus: Stimulus) -> int:

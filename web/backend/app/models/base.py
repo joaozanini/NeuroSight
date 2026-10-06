@@ -38,8 +38,9 @@ class UtcDateTime(TypeDecorator):
     cache_ok = True
 
     def process_bind_param(self, value, dialect):
-        if value is not None and value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
+        # Em UTC também na ida: o SQLite descartaria o fuso de "14:30-03:00" e guardaria 14:30.
+        if value is not None:
+            value = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
         return value
 
     def process_result_value(self, value, dialect):
