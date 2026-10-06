@@ -105,9 +105,11 @@ curl http://IP-DA-VM:8000/healthz
 ```
 Se 5.1 funciona e 5.3 não → é firewall da faculdade (volte ao passo 0.4).
 
-5.4 (execução de ponta a ponta): rode o simulador do óculos de qualquer máquina apontando para o
-servidor (`python scripts/device_simulator.py --server http://IP-DA-VM:8000 --key SUA-CHAVE`) e
-prepare uma sessão pelo site (ver `web/README.md`, "Testar sem o óculos").
+5.4 (execução de ponta a ponta): rode o simulador do óculos de qualquer máquina com o repositório e o
+venv do backend (ele usa o gerador de `backend/app/synthetic.py`), apontando para o servidor
+(`python scripts/device_simulator.py --server http://IP-DA-VM:8000 --key SUA-CHAVE`), e prepare uma
+sessão pelo site (ver `web/README.md`, "Testar sem o óculos"). Depois do B, a sessão fica Concluída
+e a análise aparece em "Analisar dados".
 
 ## 6. Apontar o app do óculos pro servidor
 

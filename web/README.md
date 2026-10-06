@@ -69,12 +69,15 @@ convite para criar a senha (o link aparece no terminal e vai por e-mail quando h
 
 ```bash
 .venv\Scripts\python -m app.seed --admin-email voce@lab.br --admin-name "Seu Nome"
-.venv\Scripts\python -m app.seed --demo   # usuários, pacientes e estímulos de exemplo (senha NeuroSight#2026)
+.venv\Scripts\python -m app.seed --demo   # usuários, pacientes, estímulos e sessões de exemplo (senha NeuroSight#2026)
 ```
 
 Os estímulos de exemplo são desenhados na hora (nada de mídia no repositório) e passam pelo mesmo
 processamento de um envio pelo site: miniatura e versão para o óculos, com o ffmpeg que vem no
-`imageio-ffmpeg`.
+`imageio-ffmpeg`. As sessões de exemplo Concluídas e Interrompidas ganham olhar, expressões e uma
+gravação sintéticos (o mesmo gerador do simulador, `backend/app/synthetic.py`), que passam pela
+ingestão de verdade: o `--demo` leva cerca de um minuto a mais por isso. Rodar o `--demo` de novo
+completa os dados que faltarem, inclusive num banco semeado antes de existir a análise.
 
 Sem SMTP, os convites e redefinições que o admin envia pelo site mostram o link para copiar, e o
 "Esqueci minha senha" deixa o link no log da API. Para ver os e-mails no dev, rode o
@@ -110,7 +113,9 @@ alembic revision --autogenerate -m "descrição"  # nova migração a partir dos
 `scripts/device_simulator.py` faz o papel do óculos, com o protocolo de
 [`docs/protocolo-oculos.md`](../docs/protocolo-oculos.md): mostra o nome e o código de pareamento,
 baixa os estímulos quando o site prepara a sessão (W14), obedece aos comandos da W15 e gera olhar e
-expressões sintéticos. O B é o Enter; depois dele o simulador envia o JSON e a gravação.
+expressões sintéticos. O B é o Enter; depois dele o simulador envia o JSON e a gravação, e o servidor
+monta o MP4, analisa e deixa a sessão Concluída (ou Interrompida), com a análise na W17. O
+`--truth arquivo.json` grava as fixações que o simulador gerou, para conferir as métricas.
 
 ```bash
 cd backend
@@ -154,6 +159,17 @@ executar sessões" e ser o responsável):
 O óculos usa o WebSocket `/api/v1/device/ws` e as rotas `/api/v1/device/...`, descritos em
 [`docs/protocolo-oculos.md`](../docs/protocolo-oculos.md).
 
+Dados coletados (Fase 5; quem vê a sessão vê a análise e a gravação, e baixar exige "Exportar os
+dados das sessões" e fica na auditoria como Exportação):
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/v1/sessions/{id}/analysis` | W17: exibições com as métricas, marcações, gravação e expressões |
+| GET | `/api/v1/sessions/{id}/recording` | o MP4 para assistir (Range) |
+| GET | `/api/v1/sessions/{id}/downloads/tracking` | o JSON como o óculos enviou |
+| GET | `/api/v1/sessions/{id}/downloads/recording` | o MP4 |
+| GET | `/api/v1/sessions/{id}/downloads/csv` | uma linha por exibição de estímulo, com as métricas e a média de cada expressão |
+
 Sessões do fluxo antigo, só leitura (🔒 = com `QUESTPRO_API_KEY` definida, exige o login do site
 ou o header `X-Api-Key`):
 
@@ -165,12 +181,19 @@ ou o header `X-Api-Key`):
 
 Docs interativas em `http://localhost:8000/docs`.
 
-## Heatmap (como é calculado)
+## Análise (como é calculada)
 
-Porta fiel do algoritmo de referência ([`headset/tools/heatmap_overlay.py`](../headset/tools/heatmap_overlay.py)): para o
-instante `t`, as amostras válidas na janela `[t−W, t]` depositam gaussianas (σ configurável)
-com decaimento linear, normalizadas pelo pico e coloridas com colormap JET — tudo no
-navegador, em ¼ de resolução, com os parâmetros ajustáveis sem reprocessar nada.
+Depois do envio do óculos, o servidor (`backend/app/services/analysis.py`) separa as exibições de
+estímulo pelos eventos e calcula, em cada uma, as fixações por I-DT (até 1° de dispersão em pelo
+menos 100 ms, em graus de ângulo visual pela geometria do painel; `QUESTPRO_FIXATION_*`), a duração
+média, o tempo até a 1ª fixação e a porcentagem de amostras válidas, além das expressões faciais
+reamostradas a 10 Hz. Os detalhes estão em [`docs/protocolo-oculos.md`](../docs/protocolo-oculos.md),
+seção 4.3.
+
+O mapa de calor da W17 segue o algoritmo de referência
+([`headset/tools/heatmap_overlay.py`](../headset/tools/heatmap_overlay.py)): cada célula com olhar
+deposita uma gaussiana, com o peso do tempo de olhar, num acumulador em ¼ de resolução, normalizado
+pelo pico e pintado numa escala de azul, no navegador (`frontend/src/heatmap`).
 
 ## Produção (servidor)
 
