@@ -66,8 +66,12 @@ convite para criar a senha (o link aparece no terminal e vai por e-mail quando h
 
 ```bash
 .venv\Scripts\python -m app.seed --admin-email voce@lab.br --admin-name "Seu Nome"
-.venv\Scripts\python -m app.seed --demo   # usuários de exemplo dos protótipos (senha NeuroSight#2026)
+.venv\Scripts\python -m app.seed --demo   # usuários, pacientes e estímulos de exemplo (senha NeuroSight#2026)
 ```
+
+Os estímulos de exemplo são desenhados na hora (nada de mídia no repositório) e passam pelo mesmo
+processamento de um envio pelo site: miniatura e versão para o óculos, com o ffmpeg que vem no
+`imageio-ffmpeg`.
 
 Sem SMTP, os convites e redefinições que o admin envia pelo site mostram o link para copiar, e o
 "Esqueci minha senha" deixa o link no log da API. Para ver os e-mails no dev, rode o

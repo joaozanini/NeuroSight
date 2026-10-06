@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 0 Base técnica | concluída | `fase-0-base-tecnica` (`690ed32` backend, `d9269a4` frontend) | Ver as notas da Fase 0 abaixo. |
 | 1 Contas, permissões e auditoria | concluída | `fase-1-contas` (`0c472a9` backend, `6141467` frontend) | Ver as notas da Fase 1 abaixo. |
-| 2 Pacientes e estímulos | não iniciada | | |
+| 2 Pacientes e estímulos | concluída | `fase-2-pacientes-estimulos` (`975b223` backend, `e29d8ff` frontend) | Ver as notas da Fase 2 abaixo. |
 | 3 Configuração de sessões | não iniciada | | |
 | 4 Execução ao vivo + simulador | não iniciada | | |
 | 5 Ingestão e análise | não iniciada | | |
@@ -59,6 +59,32 @@
 - **Dados de exemplo**: `python -m app.seed --demo` cria os usuários da W19 (senha `NeuroSight#2026`).
   Para ver e-mails, Mailpit com `QUESTPRO_SMTP_HOST/PORT/SECURITY` (ver `web/README.md`).
 - `sessions_as_owner` (W20) devolve 0 até a Fase 3 ligar as sessões novas.
+
+### Notas da Fase 2 (para as próximas sessões)
+- **O que a Fase 3 liga**: `sessions_count`, `last_session_at` e `sessions` dos pacientes
+  (`_detail` em `routers/patients.py`; o schema `PatientSession` já existe) e a ordem da W06 pela
+  última sessão; `stimuli.usage_count()` (devolve 0) e a lista `sessions` da W11 (`StimulusSession`),
+  que também decidem se o estímulo pode ser excluído. Arquivados (`status = "archived"`) e pacientes
+  inativos não entram em sessões novas.
+- **Rotas**: `GET /patients` (`q`, `include_inactive`, 8 por página, `counts`), `GET /patients/next-code`,
+  `POST /patients` e `PUT /patients/{id}` em multipart (`data` em JSON + `consent_file`),
+  `PUT /patients/{id}/status`, `GET /patients/{id}/consent`. `GET /stimuli` (`q`, `kind`, `tag`,
+  `include_archived`, 48 por página, `counts`), `GET /stimuli/tags`, `POST /stimuli/uploads` (um
+  arquivo, vira rascunho), `DELETE /stimuli/uploads/{id}`, `POST /stimuli` (salva os rascunhos),
+  `GET`/`PATCH /stimuli/{id}`, `PUT /stimuli/{id}/status`, `DELETE /stimuli/{id}`, `/thumbnail` e `/file`.
+- **Versão para o óculos** (Fase 4): `device_status`, `device_format`, `device_sha256` (chave do cache
+  no aparelho), `device_size_bytes` e dimensões em `stimuli`; o arquivo é
+  `storage.stimulus_device(id, formato)`. Gerada em segundo plano depois de salvar e retomada ao subir
+  a API (`services/stimuli.resume_pending`).
+- **Front**: `?paciente=<id>` em `/sessoes/nova` é o "Nova sessão" da W06/W08 (o assistente deve
+  abrir com ele); `/estimulos?enviar=1` abre a W10 (para o atalho da W04). Filtros na URL com
+  `useUrlFilters` (`src/lib`). Componentes `StimulusThumbnail` e `DateField` (com `lib/dates.ts`).
+- **Testes**: `tests/media_files.py` gera JPG, PNG, MP4/MOV e PDF; no front, `src/test/xhr.ts` simula
+  os envios e o `mockApi` entende `FormData`. No `mockApi` a ordem das rotas importa: declare
+  `GET /stimuli/tags` antes de `GET /stimuli/:id`, como no servidor.
+- **Dados de exemplo**: `--demo` cria P-001 a P-015 (os da W06) e 17 estímulos (rostos 01 a 12,
+  paisagens, frutas e os vídeos "Ondas na praia" e "Floresta com vento"), desenhados por
+  `app/seed_media.py`, em nome de Ana Souza.
 
 ### Decisões em aberto
 - **Fluxo antigo (cena 3D)**: a suposição é que ele é substituído e que a tabela `sessions`
@@ -136,6 +162,48 @@ _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê
 - **Fase 1, deploy**: o `docker-compose.yml` não foi mexido (fica para a Fase 8, com o usuário).
   Até lá ele não repassa `QUESTPRO_SMTP_*` nem `QUESTPRO_PUBLIC_BASE_URL`; o `DEPLOY.md` explica
   como criar o primeiro admin no servidor.
+- **Fase 2, cadastro do paciente em multipart**: os campos em JSON (`data`) e o PDF
+  (`consent_file`) vão numa requisição só, para o termo entrar no mesmo registro da auditoria. A
+  edição é `PUT` (o formulário inteiro) e inativar/reativar, `PUT /patients/{id}/status`.
+- **Fase 2, regras do TCLE** (o protótipo é estático): assinado exige a data; o PDF é opcional
+  ("PDF não anexado" na W08), até 20 MB e conferido pelo `%PDF-`. Anexar o PDF ou digitar a data
+  marca o termo como assinado; desmarcar limpa a data e tira o PDF (o arquivo sai do disco depois de
+  salvar). Obrigatórios na W07: código, nome, nascimento, sexo e óculos. O código aceita letras,
+  números, `.`, `-` e `_` (até 20), fica em maiúsculas e é único; o sugerido é o maior P-NNN + 1.
+- **Fase 2, telas além dos protótipos**: W06 com o selo "Inativo" (sem "Nova sessão") e o subtítulo
+  "N pacientes cadastrados e M inativos" quando o filtro está ligado; W08 com "Cadastrada",
+  "Cadastrado" ou "Cadastro feito em … por …" conforme o sexo, "Não assinado", "Nenhuma observação."
+  e o cartão neutro "Reativar paciente"; W09 com o selo "Arquivado" e os estados vazios; W11 com
+  "Uso em sessões" quando nunca foi usado, "Arquivar ou excluir estímulo" (com "Excluir estímulo",
+  confirmado num modal) para o que nunca foi usado, "Estímulo arquivado" com "Desarquivar estímulo",
+  "Duração" nos vídeos e um aviso se a versão para o óculos falhar.
+- **Fase 2, permissões**: excluir e desarquivar exigem "Arquivar estímulos"; ver a biblioteca exige só
+  o login (a W21 não tem permissão de ver estímulos); o menu esconde Pacientes sem "Ver pacientes".
+- **Fase 2, auditoria**: o paciente aparece pelo código (o CSV é uma exportação). "Salvar na
+  biblioteca" é um registro só ("2 imagens e 1 vídeo enviados à biblioteca", como a W22), com uma
+  linha por estímulo no "O que mudou"; com um estímulo só, o registro leva o nome e o link. Ação
+  nova "Exclusão", para o estímulo nunca usado.
+- **Fase 2, envio (W10)**: "Salvar na biblioteca" fica ativo durante o envio, como no PNG, e espera os
+  arquivos terminarem; "Remover" só nos arquivos com erro, como no PNG; Cancelar ou fechar descarta
+  os rascunhos, e os esquecidos somem em 24 h (`QUESTPRO_DRAFT_HOURS`). O formato vem do conteúdo:
+  um MOV renomeado para .mp4 é recusado, e um PNG com extensão .jpg entra como PNG.
+- **Fase 2, biblioteca sem paginação visível**: o PNG da W09 não mostra paginação; a lista carrega 48
+  por vez e busca mais ao rolar ("Mostrar mais" fica de reserva).
+- **Fase 2, mídia**: miniatura JPEG cobrindo 640 × 400. Versão para o óculos no mesmo formato, até
+  2048 px e já girada pelo EXIF (o UE não lê a rotação); vídeo H.264 yuv420p com AAC e faststart,
+  até 2048 px no lado maior, só remontado quando já está nesse formato. Imagens até 100 megapixels e
+  arquivos até 1 GB (`QUESTPRO_MAX_STIMULUS_MB`). A versão só é gerada depois de salvar na
+  biblioteca e é retomada ao subir a API. Com os 2 workers do Docker atual, um advisory lock faz só
+  um retomar, e a limpeza de rascunhos é em lote (apagar a mesma linha duas vezes derrubava a subida).
+- **Fase 2, filtros na URL** (`?q=&inativos=1&pagina=` na W06; `?q=&tipo=imagens|videos&etiqueta=&arquivados=1`
+  na W09). O `useUrlFilters` também entrou na W19 e na W22: o `setSearchParams` do React Router parte
+  dos parâmetros do último render, e dois filtros trocados em seguida se sobrescreviam (achado na
+  verificação no navegador).
+- **Fase 2, medidas**: o filtro de etiqueta tem 218 px (192 no PNG; o Select reserva 44 px para a
+  seta e "Todas as etiquetas" cortava) e o nome do cartão é 17 px, como no PNG.
+- **Fase 2, verificação**: além dos testes, o fluxo da fase rodou num Chromium headless
+  (playwright-core numa pasta fora do repositório) contra o build servido pela API sobre PostgreSQL,
+  com o `--demo`: W06 a W11, o .mov recusado, a versão para o óculos e os registros na auditoria.
 
 ---
 
