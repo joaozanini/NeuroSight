@@ -21,11 +21,8 @@ class Settings(BaseSettings):
     # Origem do dev server do React (CORS).
     frontend_origin: str = "http://localhost:5173"
 
-    # Limite defensivo de frames por requisição multipart (o device manda em lotes).
-    max_batch_frames: int = 50
-
-    # Chave exigida no header X-Api-Key dos endpoints de ESCRITA (ingestão e delete) quando
-    # definida. Vazia = tudo aberto (ok no dev local; NUNCA exponha na internet sem chave).
+    # Chave que libera a leitura das sessões do fluxo antigo (/legacy/sessions) pelo X-Api-Key, além
+    # do login do site. Vazia = leitura aberta (ok no dev local; NUNCA exponha na internet sem chave).
     api_key: str = ""
 
     # Pasta com o build do frontend (dist) para servir como SPA na raiz. Se não existir,

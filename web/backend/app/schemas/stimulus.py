@@ -122,7 +122,7 @@ class StimulusStatusChange(BaseModel):
 
 
 class StimulusSession(BaseModel):
-    """Linha do "Usado em N sessões" (W11); as sessões novas chegam na Fase 3."""
+    """Linha do "Usado em N sessões" (W11): só as sessões que a pessoa logada pode ver."""
 
     id: str
     title: str
@@ -150,6 +150,7 @@ class StimulusDetail(BaseModel):
     file_url: str
     device_status: DeviceStatus
     device_error: str | None
+    # Todas as sessões que usam o estímulo; a lista traz só as que a pessoa pode ver.
     sessions_count: int
     sessions: list[StimulusSession]
     # Só o que nunca foi usado em sessões pode ser excluído; o resto, só arquivado.

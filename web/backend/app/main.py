@@ -7,7 +7,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,9 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from .config import settings
 from .db import migrate
 from .logging_config import setup_logging
-from .routers import audit, auth, ingest, me, patients, permissions, sessions, stimuli, users
+from .routers import audit, auth, legacy_sessions, me, patients, permissions, sessions, stimuli, users
 from .schemas.common import Health
-from .security import require_api_key
 from .services.stimuli import resume_pending
 
 setup_logging(settings.log_level)
@@ -41,7 +40,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="NeuroSight API", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="NeuroSight API", version="0.4.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,12 +52,8 @@ app.add_middleware(
     expose_headers=["Content-Range", "Accept-Ranges", "Content-Length"],
 )
 
-# Escrita (ingestão) exige X-Api-Key quando QUESTPRO_API_KEY está definida.
-app.include_router(
-    ingest.router, prefix=settings.api_prefix, tags=["ingest"],
-    dependencies=[Depends(require_api_key)],
-)
 app.include_router(sessions.router, prefix=settings.api_prefix, tags=["sessions"])
+app.include_router(legacy_sessions.router, prefix=settings.api_prefix, tags=["legacy"])
 app.include_router(auth.router, prefix=settings.api_prefix, tags=["auth"])
 app.include_router(me.router, prefix=settings.api_prefix, tags=["me"])
 app.include_router(users.router, prefix=settings.api_prefix, tags=["users"])

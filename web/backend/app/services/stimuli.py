@@ -14,12 +14,12 @@ import unicodedata
 from datetime import timedelta
 from typing import BinaryIO
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.orm import Session as DbSession
 
 from ..config import settings
 from ..db import SessionLocal, engine
-from ..models import Stimulus, StimulusTag, User, new_id, utcnow
+from ..models import SessionStimulus, Stimulus, StimulusTag, User, new_id, utcnow
 from . import audit, media
 from .storage import storage
 
@@ -115,8 +115,10 @@ def audit_saved(db: DbSession, request, actor: User | None, saved: list[Stimulus
 
 
 def usage_count(db: DbSession, stimulus: Stimulus) -> int:
-    """Sessões que usam o estímulo. As sessões novas chegam na Fase 3 (session_stimuli)."""
-    return 0
+    """Sessões que usam o estímulo, de qualquer pesquisador (decide se ele pode ser excluído)."""
+    return db.scalar(
+        select(func.count()).select_from(SessionStimulus).where(SessionStimulus.stimulus_id == stimulus.id)
+    ) or 0
 
 
 # ---- Envio ------------------------------------------------------------------------------------

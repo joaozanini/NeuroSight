@@ -15,6 +15,7 @@ from ..models import User
 from ..schemas.user import LinkResult, UserCreate, UserCreated, UserDetail, UserOut, UserPage, UserUpdate
 from ..security import require_permission
 from ..services import accounts, audit, tokens
+from ..services import sessions as session_rules
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -24,11 +25,11 @@ ManageUsers = require_permission("admin.users")
 EMAIL_TAKEN = "já existe um usuário com este e-mail"
 
 
-def _detail(user: User) -> UserDetail:
+def _detail(db: DbSession, user: User) -> UserDetail:
     return UserDetail(
         **UserOut.model_validate(user).model_dump(),
         created_by_name=user.created_by.name if user.created_by else None,
-        sessions_as_owner=0,
+        sessions_as_owner=session_rules.owned_count(db, user.id),
     )
 
 
@@ -87,12 +88,12 @@ def create_user(body: UserCreate, request: Request, me: User = Depends(ManageUse
     logger.info("usuário %s (%s) criado por %s", user.email, user.role, me.email)
 
     sent = accounts.send_link(user, raw, link, invited_by=me.name)
-    return UserCreated(user=_detail(user), invite=_link_result(sent))
+    return UserCreated(user=_detail(db, user), invite=_link_result(sent))
 
 
 @router.get("/users/{user_id}", response_model=UserDetail)
 def get_user(user_id: str, _: User = Depends(ManageUsers), db: DbSession = Depends(get_db)):
-    return _detail(_get(db, user_id))
+    return _detail(db, _get(db, user_id))
 
 
 @router.patch("/users/{user_id}", response_model=UserDetail)
@@ -131,7 +132,7 @@ def update_user(user_id: str, body: UserUpdate, request: Request, me: User = Dep
         audit.record(db, request, me, "update", "user", user.name, user.id, diff)
         db.commit()
         logger.info("usuário %s alterado por %s: %s", user.email, me.email, [c["field"] for c in diff])
-    return _detail(user)
+    return _detail(db, user)
 
 
 @router.post("/users/{user_id}/resend-invite", response_model=LinkResult)

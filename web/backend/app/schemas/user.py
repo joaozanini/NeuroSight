@@ -29,7 +29,7 @@ class UserOut(BaseModel):
 
 class UserDetail(UserOut):
     created_by_name: str | None
-    # Sessões em que a pessoa é a responsável; as sessões novas chegam na Fase 3.
+    # Sessões em que a pessoa é a responsável.
     sessions_as_owner: int
 
 
