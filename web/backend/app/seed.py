@@ -2,20 +2,27 @@
 o primeiro admin, mostrando o link do convite.
 
     python -m app.seed --admin-email ana@lab.br --admin-name "Ana Souza"
-    python -m app.seed --demo        # também cria os usuários de exemplo dos protótipos
+    python -m app.seed --demo        # também cria usuários, pacientes e estímulos de exemplo
 
 Pode rodar de novo sem estragar nada: o que já existe fica como está. Rodar com o e-mail de um
 admin que ainda não aceitou o convite gera um link novo (o anterior deixa de valer).
 """
 import argparse
+import io
 import sys
+import tempfile
+from datetime import date
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 
+from . import seed_media
 from .db import SessionLocal, migrate
-from .models import User, utcnow
+from .models import Patient, Stimulus, User, utcnow
 from .services import accounts, audit, passwords, permissions, tokens
+from .services import patients as patient_rules
+from .services import stimuli as stimulus_rules
 
 DEMO_PASSWORD = "NeuroSight#2026"
 
@@ -29,6 +36,28 @@ DEMO_USERS = [
     ("Daniela Rocha", "daniela.rocha@exemplo.com", "researcher", "active"),
     ("Eduardo Martins", "eduardo.martins@exemplo.com", "researcher", "active"),
     ("Fernanda Lopes", "fernanda.lopes@exemplo.com", "researcher", "inactive"),
+]
+
+
+# Pacientes da W06 (os oito visíveis) e mais sete, para fechar os 15 do subtítulo. A data do TCLE
+# vazia quer dizer termo ainda não assinado; os assinados levam um PDF de exemplo.
+DEMO_PATIENTS = [
+    # código, nome, nascimento, sexo, óculos ou lentes, assinatura do TCLE, observações
+    ("P-001", "Paula Ribeiro", "1985-05-19", "female", "none", "2026-08-03", None),
+    ("P-002", "Tiago Almeida", "1992-10-27", "male", "glasses", "2026-08-03", None),
+    ("P-003", "Juliana Costa", "2000-02-14", "female", "contacts", "2026-08-10", None),
+    ("P-004", "André Barbosa", "1979-07-08", "male", "none", "2026-08-12", None),
+    ("P-005", "Sofia Mendes", "2004-03-22", "female", "none", "2026-08-17", None),
+    ("P-006", "Ricardo Gomes", "1988-12-01", "male", "glasses", "2026-08-20", None),
+    ("P-007", "Camila Teixeira", "1987-09-14", "female", "contacts", "2026-08-24", None),
+    ("P-008", "Felipe Duarte", "1993-04-02", "male", "none", "2026-08-26", None),
+    ("P-009", "Rafael Nunes", "2001-11-05", "male", "none", "2026-08-28", None),
+    ("P-010", "Larissa Pinto", "1999-12-17", "female", "glasses", "2026-08-31", None),
+    ("P-011", "Lucas Ferreira", "1990-01-30", "male", "contacts", "2026-08-31", None),
+    ("P-012", "Gabriel Moura", "2003-06-08", "male", "none", "2026-09-01", None),
+    ("P-013", "Vanessa Rocha", "1996-08-11", "undisclosed", "none", None, None),
+    ("P-014", "Mariana Alves", "1998-03-12", "female", "glasses", "2026-09-01", "Prefere sessões no período da manhã."),
+    ("P-015", "Beatriz Carvalho", "1995-07-21", "female", "none", "2026-09-02", None),
 ]
 
 
@@ -84,11 +113,61 @@ def seed_demo(db: DbSession, password: str) -> None:
             _invite(db, user, admin)
 
 
+def seed_demo_patients(db: DbSession, actor: User | None) -> None:
+    created = []
+    for code, name, birth, sex, vision, signed_on, notes in DEMO_PATIENTS:
+        if patient_rules.find_by_code(db, code):
+            continue
+        patient = Patient(
+            code=code, name=name, birth_date=date.fromisoformat(birth), sex=sex, vision_correction=vision,
+            consent_signed=signed_on is not None, consent_date=date.fromisoformat(signed_on) if signed_on else None,
+            notes=notes, status="active", created_by_id=actor.id if actor else None,
+        )
+        db.add(patient)
+        db.flush()
+        if signed_on:
+            pdf = seed_media.minimal_pdf(f"Termo de consentimento - {code} (exemplo)")
+            patient.consent_file_key, patient.consent_file_size = patient_rules.save_consent_file(patient.id, io.BytesIO(pdf))
+            patient.consent_file_name = f"termo-{code}.pdf"
+        audit.record(db, None, actor, "create", "patient", code, patient.id,
+                     audit.diff({}, patient_rules.snapshot(patient), patient_rules.FIELD_LABELS))
+        created.append(code)
+    db.commit()
+    print(f"Pacientes de exemplo: {len(created)} criados." if created else "Pacientes de exemplo: já existem.")
+
+
+def seed_demo_stimuli(db: DbSession, actor: User | None) -> None:
+    """Desenha os arquivos, envia como se fosse pela W10 e gera as versões para o óculos."""
+    existing = set(db.scalars(select(Stimulus.name).where(Stimulus.status != "draft")))
+    images = [item for item in seed_media.IMAGES if item.name not in existing]
+    videos = [item for item in seed_media.VIDEOS if item.name not in existing]
+    if not images and not videos:
+        print("Estímulos de exemplo: já existem.")
+        return
+    saved = []
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        files = [(item, seed_media.write_image(item, folder)) for item in images]
+        files += [(item, seed_media.write_video(item, folder)) for item in videos]
+        for item, path in files:
+            with open(path, "rb") as f:
+                stimulus = stimulus_rules.create_draft(db, actor, f, path.name)
+            stimulus.name, stimulus.status = item.name, "active"
+            stimulus.description = getattr(item, "description", None)
+            stimulus.set_tags(list(item.tags))
+            saved.append(stimulus)
+    db.flush()
+    stimulus_rules.audit_saved(db, None, actor, saved)
+    db.commit()
+    stimulus_rules.process_device_versions([s.id for s in saved])
+    print(f"Estímulos de exemplo: {stimulus_rules.batch_label(saved)}.")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.seed", description=__doc__.split("\n\n")[0])
     parser.add_argument("--admin-email", help="e-mail do primeiro admin (recebe o convite)")
     parser.add_argument("--admin-name", default="Administrador", help="nome do primeiro admin")
-    parser.add_argument("--demo", action="store_true", help="cria os usuários de exemplo dos protótipos")
+    parser.add_argument("--demo", action="store_true", help="cria usuários, pacientes e estímulos de exemplo")
     parser.add_argument("--demo-password", default=DEMO_PASSWORD, help="senha dos usuários de exemplo")
     args = parser.parse_args(argv)
 
@@ -110,6 +189,11 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         if args.demo:
             seed_demo(db, args.demo_password)
+            # Os exemplos ficam em nome de quem cadastra no dia a dia (Ana Souza, pesquisadora).
+            actor = accounts.find_by_email(db, "ana.souza@exemplo.com") or db.scalar(
+                select(User).where(User.role == "admin").order_by(User.created_at))
+            seed_demo_patients(db, actor)
+            seed_demo_stimuli(db, actor)
         db.commit()
     print(f"Pronto ({utcnow():%d/%m/%Y %H:%M} UTC).")
     return 0

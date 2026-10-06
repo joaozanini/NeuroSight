@@ -1,0 +1,44 @@
+/* Miniatura do estímulo: 16:10, como nos cartões da W09. */
+.thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--color-thumbnail);
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.muted img {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+
+.fallback {
+  color: var(--color-text-muted);
+}
+
+.duration {
+  position: absolute;
+  right: 9px;
+  bottom: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  padding: 0 11px 0 12px;
+  border-radius: var(--radius-full);
+  background: var(--color-media-badge);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}

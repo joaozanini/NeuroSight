@@ -1,0 +1,92 @@
+.section {
+  margin-bottom: 40px;
+}
+
+.heading {
+  margin-bottom: 20px;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 28px;
+}
+
+.headingRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.count {
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+}
+
+/* Três colunas, como na W08. */
+.data {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 32px;
+  margin: 0;
+}
+
+.data dt,
+.notes dt {
+  font-size: var(--font-size-hint);
+  font-weight: var(--font-weight-semibold);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.data dd,
+.notes dd {
+  margin: 4px 0 0;
+  font-size: var(--font-size-control);
+  line-height: 26px;
+}
+
+.data dd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.consentLink {
+  margin-top: 8px;
+  font-size: var(--font-size-md);
+  line-height: 24px;
+}
+
+.noFile {
+  margin-top: 4px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.notes {
+  margin: 24px 0 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.notes dd {
+  white-space: pre-line;
+}
+
+.notes .empty {
+  color: var(--color-text-muted);
+}
+
+.sessionLink {
+  font-weight: var(--font-weight-semibold);
+}
+
+.statusCell {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .data {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

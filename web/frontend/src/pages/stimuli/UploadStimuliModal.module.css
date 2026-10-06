@@ -1,0 +1,78 @@
+.alert {
+  margin-bottom: 20px;
+}
+
+/* Arquivos à esquerda e as informações do selecionado à direita, com a divisória no meio (W10). */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 378fr) minmax(0, 467fr);
+  margin-top: 28px;
+}
+
+.files {
+  min-width: 0;
+  padding-right: 30px;
+}
+
+.filesTitle {
+  margin-bottom: 12px;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+  color: var(--color-text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 420px;
+  margin: 0;
+  padding: 2px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.info {
+  min-width: 0;
+  padding-left: 28px;
+  border-left: 1px solid var(--color-border-strong);
+}
+
+.infoTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: 26px;
+}
+
+.fileName {
+  overflow: hidden;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+@media (max-width: 860px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .files {
+    padding-right: 0;
+  }
+
+  .info {
+    padding-left: 0;
+    border-left: 0;
+  }
+}

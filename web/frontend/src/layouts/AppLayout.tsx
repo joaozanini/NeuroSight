@@ -1,6 +1,6 @@
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { authApi, useCurrentUser } from '../api/auth'
+import { authApi, hasPermission, useCurrentUser } from '../api/auth'
 import { useToast } from '../components/Toast/toastContext'
 import { allowedAdminTabs } from '../pages/admin/adminTabs'
 import Sidebar from './Sidebar'
@@ -31,7 +31,12 @@ export default function AppLayout() {
       <a href="#conteudo" className={styles.skip}>
         Pular para o conteúdo
       </a>
-      <Sidebar user={{ name: me.name, roleLabel: me.role_label }} showAdmin={allowedAdminTabs(me).length > 0} onLogout={logout} />
+      <Sidebar
+        user={{ name: me.name, roleLabel: me.role_label }}
+        showAdmin={allowedAdminTabs(me).length > 0}
+        showPatients={hasPermission(me, 'patients.view')}
+        onLogout={logout}
+      />
       <main id="conteudo" className={styles.main} tabIndex={-1}>
         <Outlet />
       </main>

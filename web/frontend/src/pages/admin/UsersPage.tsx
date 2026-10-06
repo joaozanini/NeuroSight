@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useCurrentUser } from '../../api/auth'
@@ -21,6 +20,7 @@ import { useToast } from '../../components/Toast/toastContext'
 import { formatRelative, sentence } from '../../lib/format'
 import type { UserStatus } from '../../lib/status'
 import { useDebouncedValue } from '../../lib/useDebouncedValue'
+import { useUrlFilters } from '../../lib/useUrlFilters'
 import { usePageTitle } from '../../lib/usePageTitle'
 import LinkModal from './LinkModal'
 import styles from './UsersPage.module.css'
@@ -51,7 +51,7 @@ export default function UsersPage() {
   const me = useCurrentUser()
   const toast = useToast()
   const queryClient = useQueryClient()
-  const [params, setParams] = useSearchParams()
+  const [params, updateParams] = useUrlFilters()
   const filters: UserFilters = {
     q: params.get('q') ?? '',
     role: (params.get('perfil') ?? '') as Role | '',
@@ -61,20 +61,6 @@ export default function UsersPage() {
   const [search, setSearch] = useState(filters.q ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [pendingLink, setPendingLink] = useState<PendingLink | null>(null)
-
-  function updateParams(changes: Record<string, string | number | null>) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        for (const [key, value] of Object.entries(changes)) {
-          if (value === null || value === '' || (key === 'pagina' && value === 1)) next.delete(key)
-          else next.set(key, String(value))
-        }
-        return next
-      },
-      { replace: true },
-    )
-  }
 
   useEffect(() => {
     if (debouncedSearch.trim() !== (filters.q ?? '')) updateParams({ q: debouncedSearch.trim(), pagina: null })

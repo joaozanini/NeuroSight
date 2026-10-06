@@ -9,6 +9,7 @@ import {
   Card,
   Checkbox,
   DangerZone,
+  DateField,
   Dropzone,
   FileField,
   FormAlert,
@@ -26,6 +27,7 @@ import {
   StatCard,
   StatusBadge,
   Stepper,
+  StimulusThumbnail,
   Table,
   Tabs,
   Tag,
@@ -51,6 +53,16 @@ interface PatientRow {
   sessions: number
   last: string
 }
+
+// A ilustração do protótipo "Componente · Miniatura do estímulo", para ver a miniatura com imagem.
+const MOUNTAINS =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 200'><rect width='320' height='200' fill='#d4d9dd'/>" +
+      "<circle cx='237' cy='74' r='19' fill='#e9e4da'/>" +
+      "<polygon points='0,160 80,90 140,128 205,63 320,135 320,200 0,200' fill='#9aa5ac'/>" +
+      "<polygon points='0,175 95,117 175,178 255,128 320,165 320,200 0,200' fill='#5e6a72'/></svg>",
+  )
 
 const PATIENTS: PatientRow[] = [
   { code: 'P-014', name: 'Mariana Alves', birth: '12/03/1998', sessions: 3, last: '29/09/2026' },
@@ -110,6 +122,7 @@ export default function ComponentsPage() {
   const [tags, setTags] = useState(['paisagem', 'natureza'])
   const [page, setPage] = useState(1)
   const [dropped, setDropped] = useState<string[]>([])
+  const [birth, setBirth] = useState('12/03/1998')
 
   return (
     <div className={styles.page}>
@@ -171,6 +184,7 @@ export default function ComponentsPage() {
             <Checkbox label="Mostrar inativos" />
             <Checkbox label="Gravar a sessão" strong defaultChecked description="A gravação mostra o que o paciente viu no óculos e fica junto com os dados de rastreamento." />
           </div>
+          <DateField label="Data de nascimento" value={birth} onChange={setBirth} hint="Digite só os números: as barras entram sozinhas." />
           <Textarea label="Observações" placeholder="Opcional" />
           <TagInput label="Etiquetas" value={tags} onChange={setTags} />
         </div>
@@ -293,6 +307,22 @@ export default function ComponentsPage() {
           actionLabel="Inativar paciente"
           onAction={() => toast.error('Exemplo de erro: não foi possível inativar.')}
         />
+        <DangerZone
+          tone="neutral"
+          title="Reativar paciente"
+          description="O cadastro está inativo: não aparece nas listas e não recebe novas sessões."
+          actionLabel="Reativar paciente"
+          onAction={() => toast.success('P-014 reativado.')}
+        />
+      </Section>
+
+      <Section title="Miniatura do estímulo">
+        <div className={styles.grid4}>
+          <StimulusThumbnail src={MOUNTAINS} kind="image" />
+          <StimulusThumbnail src={MOUNTAINS} kind="video" duration={45} />
+          <StimulusThumbnail src={MOUNTAINS} kind="image" muted />
+          <StimulusThumbnail kind="video" duration={80} />
+        </div>
       </Section>
 
       <Section title="Envio de arquivos">

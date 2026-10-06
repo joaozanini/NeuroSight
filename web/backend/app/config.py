@@ -63,6 +63,13 @@ class Settings(BaseSettings):
     smtp_security: str = "starttls"
     smtp_timeout: float = 10.0
 
+    # ---- Pacientes e estímulos ----
+    # Tamanho máximo de cada arquivo de estímulo enviado (JPG, PNG ou MP4) e do PDF do TCLE.
+    max_stimulus_mb: int = 1024
+    max_consent_mb: int = 20
+    # Rascunhos de estímulos (enviados e nunca salvos na biblioteca) somem depois deste prazo.
+    draft_hours: int = 24
+
     @property
     def smtp_enabled(self) -> bool:
         return bool(self.smtp_host)

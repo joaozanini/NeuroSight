@@ -1,0 +1,41 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.search {
+  flex: 0 1 440px;
+}
+
+.inactive {
+  flex-shrink: 0;
+}
+
+.code {
+  font-weight: var(--font-weight-semibold);
+}
+
+.nameRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 28px;
+  white-space: nowrap;
+}

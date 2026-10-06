@@ -31,6 +31,7 @@
   --color-border-disabled: #e4e7ec;
   --color-fill-neutral: #eef0f5; /* etiquetas, controle segmentado */
   --color-fill-neutral-strong: #eff2f8; /* selo "Inativo" */
+  --color-thumbnail: #d9dee4; /* fundo da miniatura e da prévia do estímulo */
 
   /* Estados */
   --color-success: #067647;
@@ -45,6 +46,7 @@
   --color-attention: #c4450c; /* contador de sessões no menu */
   --color-chart-orange: #f97316;
   --color-overlay: rgba(28, 39, 71, 0.56);
+  --color-media-badge: rgba(26, 36, 70, 0.82); /* selo de duração sobre a miniatura */
 
   /* Tipografia: Inter sem tamanho óptico (eixo opsz fixo no corte de texto), como nos protótipos;
      títulos grandes compensam com espaçamento negativo. */

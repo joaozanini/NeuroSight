@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, setUnauthorizedHandler } from './client'
 import { uploadFile } from './upload'
+import { FakeXhr } from '../test/xhr'
 
 // Espera a promessa falhar e devolve o erro (falha o teste se ela der certo).
 async function failure(promise: Promise<unknown>): Promise<ApiError> {
@@ -10,49 +11,6 @@ async function failure(promise: Promise<unknown>): Promise<ApiError> {
     return error as ApiError
   }
   throw new Error('a chamada deveria ter falhado')
-}
-
-
-// XHR falso: guarda o que foi enviado e deixa o teste disparar progresso e resposta.
-class FakeXhr {
-  static last: FakeXhr
-  method = ''
-  url = ''
-  headers: Record<string, string> = {}
-  body: FormData | null = null
-  status = 0
-  responseText = ''
-  upload: { onprogress: ((e: ProgressEvent) => void) | null } = { onprogress: null }
-  onload: (() => void) | null = null
-  onerror: (() => void) | null = null
-  onabort: (() => void) | null = null
-  aborted = false
-
-  constructor() {
-    FakeXhr.last = this
-  }
-  open(method: string, url: string) {
-    this.method = method
-    this.url = url
-  }
-  setRequestHeader(name: string, value: string) {
-    this.headers[name] = value
-  }
-  send(body: FormData) {
-    this.body = body
-  }
-  abort() {
-    this.aborted = true
-    this.onabort?.()
-  }
-  progress(loaded: number, total: number) {
-    this.upload.onprogress?.({ lengthComputable: true, loaded, total } as ProgressEvent)
-  }
-  respond(status: number, body: unknown) {
-    this.status = status
-    this.responseText = JSON.stringify(body)
-    this.onload?.()
-  }
 }
 
 describe('envio com progresso (XHR)', () => {
