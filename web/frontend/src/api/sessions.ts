@@ -133,6 +133,6 @@ export const sessionsApi = {
     api.put<SessionDetail>(`${path(id)}/visibility`, { visibility, user_ids: userIds }),
 }
 
-// Telas que ainda chegam na Fase 4 (rotas já existem como placeholder).
+// Preparação (W14) e controle ao vivo (W15).
 export const prepareSessionPath = (id: string) => `/sessoes/${id}/preparar`
 export const controlSessionPath = (id: string) => `/sessoes/${id}/controle`

@@ -1,0 +1,275 @@
+/* W14: o rodapé com "Iniciar sessão" fica no fim da área da página. */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--page-padding-top) - var(--page-padding-bottom) + 24px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+/* ---- Antes de começar ---- */
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.done {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-success);
+}
+
+.pending {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-text-disabled);
+}
+
+.itemTitle {
+  font-size: var(--font-size-control);
+  font-weight: var(--font-weight-semibold);
+  line-height: 26px;
+}
+
+.itemDescription {
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.checkbox {
+  gap: 14px;
+}
+
+.checkbox input {
+  width: 22px;
+  height: 22px;
+  margin: 2px 1px 0;
+}
+
+.checkbox label {
+  font-size: var(--font-size-control);
+  line-height: 26px;
+}
+
+.checkbox p {
+  margin-top: -4px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+/* ---- Óculos ---- */
+
+.deviceHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.deviceIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.deviceName {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.deviceName strong {
+  font-size: var(--font-size-control);
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+}
+
+.deviceName span {
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.deviceBadge {
+  flex-shrink: 0;
+}
+
+.deviceRows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.deviceRows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--font-size-md);
+  line-height: 24px;
+}
+
+.deviceRows dt {
+  color: var(--color-text-muted);
+}
+
+.deviceRows dd {
+  margin: 0;
+  text-align: right;
+}
+
+.strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+.ok {
+  color: var(--color-success);
+}
+
+.warn {
+  color: var(--color-warning);
+}
+
+.bad {
+  color: var(--color-danger);
+}
+
+.unknown {
+  color: var(--color-text-disabled);
+}
+
+.code {
+  padding-top: 16px;
+}
+
+.codeLabel {
+  display: block;
+  margin-bottom: 10px;
+  font-size: var(--font-size-hint);
+  line-height: 20px;
+  color: var(--color-text-muted);
+}
+
+.codeRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.codeField {
+  width: 160px;
+}
+
+/* ---- Estímulos no óculos ---- */
+
+.loadCard {
+  margin-top: 24px;
+}
+
+.loadHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.loadHeader h2 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 28px;
+}
+
+.loadCount {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+}
+
+.loadDone {
+  color: var(--color-success);
+}
+
+.loadError {
+  margin-top: 12px;
+  font-size: var(--font-size-hint);
+  line-height: 22px;
+  color: var(--color-danger);
+}
+
+.alert {
+  margin-top: 24px;
+}
+
+/* ---- Rodapé ---- */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.footer p {
+  font-size: var(--font-size-md);
+  line-height: 24px;
+  color: var(--color-text-muted);
+}
+
+.footerActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.start svg {
+  fill: currentColor;
+  stroke-width: 0;
+}
+
+/* Empurra o rodapé para o fim da página, com pelo menos 48 px de folga. */
+.spacer {
+  flex: 1;
+  min-height: 48px;
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
