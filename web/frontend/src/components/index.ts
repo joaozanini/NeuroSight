@@ -2,6 +2,7 @@
 export { default as Avatar } from './Avatar/Avatar'
 export { default as Badge } from './Badge/Badge'
 export { default as StatusBadge } from './Badge/StatusBadge'
+export { default as AnchorButton } from './Button/AnchorButton'
 export { default as Button } from './Button/Button'
 export { default as LinkButton } from './Button/LinkButton'
 export type { ButtonSize, ButtonVariant } from './Button/buttonLook'

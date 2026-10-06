@@ -1,4 +1,5 @@
-"""Proteção das rotas: login do site (cookie com JWT), permissões e a chave de API do óculos.
+"""Proteção das rotas: login do site (cookie com JWT), permissões, a chave de leitura do fluxo antigo
+e a chave do óculos.
 
 Site: `get_current_user` lê o cookie, valida o JWT e recarrega o usuário do banco a cada request,
 então um usuário desativado (ou que trocou a senha em outro lugar) perde o acesso na hora.
@@ -6,16 +7,22 @@ então um usuário desativado (ou que trocou a senha em outro lugar) perde o ace
 
 Fluxo antigo (só leitura, `/legacy/sessions`): com QUESTPRO_API_KEY definida, exige a mesma chave
 no X-Api-Key ou o login do site. Sem a chave configurada fica aberto (modo dev).
+
+Óculos (WebSocket e rotas /device): com QUESTPRO_DEVICE_KEY definida, exige a mesma chave no
+X-Device-Key. Sem ela fica aberto (modo dev).
 """
+import re
 import secrets
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, Response
+from starlette.requests import HTTPConnection
 from sqlalchemy.orm import Session as DbSession
 
 from .config import settings
 from .db import get_db
 from .models import User
+from .models.device import DEVICE_ID_PATTERN
 from .services import permissions, tokens
 
 NOT_AUTHENTICATED = "não autenticado"
@@ -39,7 +46,7 @@ def clear_session_cookie(response: Response) -> None:
     response.delete_cookie(tokens.SESSION_COOKIE, path="/", httponly=True, secure=settings.cookie_secure, samesite="lax")
 
 
-def _logged_user(request: Request, response: Response, db: DbSession) -> User | None:
+def _logged_user(request: HTTPConnection, response: Response, db: DbSession) -> User | None:
     """O usuário do cookie, se ele for válido e o usuário estiver ativo (renova o cookie velho)."""
     raw = request.cookies.get(tokens.SESSION_COOKIE)
     payload = tokens.decode_session(raw) if raw else None
@@ -61,6 +68,11 @@ def get_current_user(request: Request, response: Response, db: DbSession = Depen
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def websocket_user(connection: HTTPConnection, db: DbSession) -> User | None:
+    """O usuário do cookie num WebSocket (o navegador manda o cookie no upgrade)."""
+    return _logged_user(connection, Response(), db)
 
 
 def require_reader(
@@ -94,3 +106,30 @@ def require_permission(*required: str):
         return user
 
     return dependency
+
+
+# ---- Óculos ---------------------------------------------------------------------------------
+
+def device_key_ok(key: str | None) -> bool:
+    if not settings.device_key:
+        return True
+    return bool(key) and secrets.compare_digest(key, settings.device_key)
+
+
+def valid_device_id(device_id: str | None) -> bool:
+    return bool(device_id) and re.fullmatch(DEVICE_ID_PATTERN, device_id) is not None
+
+
+def require_device(
+    x_device_key: str | None = Header(default=None, alias="X-Device-Key"),
+    x_device_id: str | None = Header(default=None, alias="X-Device-Id"),
+) -> str:
+    """Rotas HTTP do óculos: confere a chave e devolve o id do óculos."""
+    if not device_key_ok(x_device_key):
+        raise HTTPException(status_code=401, detail="chave do dispositivo inválida")
+    if not valid_device_id(x_device_id):
+        raise HTTPException(status_code=401, detail="informe o X-Device-Id do óculos")
+    return x_device_id
+
+
+DeviceId = Annotated[str, Depends(require_device)]

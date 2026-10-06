@@ -15,24 +15,8 @@ export interface ScreenRoute {
 // Telas internas, no AppLayout (menu lateral).
 export const APP_SCREENS: ScreenRoute[] = [
   { path: '/', title: 'Início', prototypes: ['W04'], phase: 6 },
-
-  { path: '/sessoes/:sessionId/preparar', title: 'Preparar sessão', prototypes: ['W14'], phase: 4, back: { to: '/sessoes', label: 'Sessões' } },
-  {
-    path: '/sessoes/:sessionId/analise',
-    title: 'Análise da sessão',
-    prototypes: ['W17'],
-    phase: 5,
-    back: { to: '/sessoes/:sessionId', label: 'Detalhes da sessão' },
-  },
-]
-
-// Tela cheia, sem menu.
-export const FULLSCREEN_SCREENS: ScreenRoute[] = [
-  { path: '/sessoes/:sessionId/controle', title: 'Controle da sessão ao vivo', prototypes: ['W15'], phase: 4, back: { to: '/sessoes/:sessionId', label: 'Detalhes da sessão' } },
 ]
 
 export const PHASE_NAMES: Record<number, string> = {
-  4: 'Execução ao vivo',
-  5: 'Ingestão e análise',
   6: 'Início',
 }

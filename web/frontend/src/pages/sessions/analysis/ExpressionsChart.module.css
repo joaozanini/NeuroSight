@@ -1,0 +1,107 @@
+/* Gráfico das expressões (W17), medido no PNG: área de 180 px, faixas listradas por estímulo. */
+.box {
+  width: 100%;
+  overflow: hidden;
+}
+
+.chart {
+  display: block;
+  font-family: var(--font-sans);
+}
+
+.hatchBase {
+  fill: #fbfbfe;
+}
+
+.hatchLine {
+  fill: #eceff8;
+}
+
+.band {
+  cursor: pointer;
+}
+
+.band:hover {
+  opacity: 0.75;
+}
+
+.band:focus-visible,
+.bandSelected:focus-visible {
+  outline: none;
+  stroke: var(--color-primary);
+  stroke-width: 2;
+}
+
+.bandSelected {
+  fill: var(--color-primary-ring);
+  cursor: pointer;
+}
+
+.grid {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+
+.axis {
+  stroke: #c3c9d8;
+  stroke-width: 1;
+}
+
+.yLabel,
+.xLabel {
+  fill: var(--color-text-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.yLabel {
+  text-anchor: end;
+}
+
+.marker line {
+  stroke: #8a93ab;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.marker text {
+  fill: #4a5578;
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.solid,
+.dashed,
+.dotted,
+.other {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.solid {
+  stroke: var(--color-primary);
+}
+
+.dashed {
+  stroke: var(--color-text);
+  stroke-dasharray: 6 5;
+  stroke-linecap: butt;
+}
+
+.dotted {
+  stroke: var(--color-chart-orange);
+  stroke-dasharray: 1 4;
+}
+
+.other {
+  stroke: var(--color-text-muted);
+}
+
+.cursor {
+  stroke: var(--color-primary);
+  stroke-width: 2.5;
+  pointer-events: none;
+}

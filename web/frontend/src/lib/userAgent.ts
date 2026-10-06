@@ -1,6 +1,8 @@
 // "Chrome no Windows" a partir do user-agent guardado na auditoria (W23, "De onde").
 
 const BROWSERS: [RegExp, string][] = [
+  // O app do óculos ("NeuroSight/1.0.0 (Quest Pro 01; Quest Pro)"), no fim de sessão pelo B.
+  [/^NeuroSight\//, 'App NeuroSight'],
   [/OculusBrowser\//, 'Navegador do Quest'],
   [/Edg(A|iOS)?\//, 'Edge'],
   [/(OPR|Opera)\//, 'Opera'],

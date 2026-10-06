@@ -9,6 +9,8 @@ describe('descrição do navegador', () => {
     ['Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0', 'Firefox no Linux'],
     ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Version/17.5 Mobile Safari/604.1', 'Safari no iOS'],
     ['Mozilla/5.0 (X11; Linux x86_64; Quest Pro) AppleWebKit/537.36 OculusBrowser/35.0 Chrome/126.0 Safari/537.36', 'Navegador do Quest no Meta Quest'],
+    // Fim de sessão pelo B: o registro leva o app do óculos.
+    ['NeuroSight/1.0.0 (Quest Pro 01; Quest Pro)', 'App NeuroSight no Meta Quest'],
   ])('%s', (ua, expected) => {
     expect(describeUserAgent(ua)).toBe(expected)
   })

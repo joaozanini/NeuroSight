@@ -38,6 +38,8 @@ services:
       # O endereço do site entra nos links: no servidor, use o IP ou o domínio de verdade.
       QUESTPRO_PUBLIC_BASE_URL: ${QUESTPRO_PUBLIC_BASE_URL:-http://localhost:${QUESTPRO_HTTP_PORT:-8000}}
       QUESTPRO_SECRET_KEY: ${QUESTPRO_SECRET_KEY:-}
+      # Chave que o óculos (e o simulador) manda para se conectar (execução ao vivo).
+      QUESTPRO_DEVICE_KEY: ${QUESTPRO_DEVICE_KEY:-}
       QUESTPRO_COOKIE_SECURE: ${QUESTPRO_COOKIE_SECURE:-false}
       QUESTPRO_SMTP_HOST: ${QUESTPRO_SMTP_HOST:-}
       QUESTPRO_SMTP_PORT: ${QUESTPRO_SMTP_PORT:-587}

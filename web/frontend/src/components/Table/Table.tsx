@@ -20,11 +20,13 @@ interface TableProps<T> {
   caption?: string
   loading?: boolean
   empty?: ReactNode
+  // Sem a cara de cartão, para ficar dentro de um Card que já tem título (W16).
+  bare?: boolean
   className?: string
 }
 
 // Tabela dos protótipos: cartão branco, cabeçalho cinza-claro e linhas de 56 px.
-export default function Table<T>({ columns, rows, rowKey, caption, loading = false, empty, className }: TableProps<T>) {
+export default function Table<T>({ columns, rows, rowKey, caption, loading = false, empty, bare = false, className }: TableProps<T>) {
   const alignClass = (align?: Column<T>['align']) => (align === 'right' ? styles.right : align === 'center' ? styles.center : undefined)
   let body: ReactNode
   if (loading) {
@@ -56,7 +58,7 @@ export default function Table<T>({ columns, rows, rowKey, caption, loading = fal
   }
 
   return (
-    <div className={cx(styles.card, className)}>
+    <div className={cx(bare ? styles.bare : styles.card, className)}>
       <div className={styles.scroll}>
         <table className={styles.table} aria-busy={loading || undefined}>
           {caption && <caption className="sr-only">{caption}</caption>}

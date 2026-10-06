@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import App from './App'
-import { APP_SCREENS, FULLSCREEN_SCREENS } from './routes'
+import { APP_SCREENS } from './routes'
 import { mockApi, reply } from './test/api'
 import { ADMIN, RESEARCHER } from './test/fixtures'
 import { renderWithProviders } from './test/render'
@@ -45,14 +45,6 @@ describe('rotas', () => {
     loggedAs(null)
     renderWithProviders(<App />, { route: '/pacientes?q=ana' })
     expect(await screen.findByRole('heading', { level: 1, name: 'Entrar' })).toBeInTheDocument()
-  })
-
-  it('o controle ao vivo é em tela cheia, sem menu', async () => {
-    loggedAs(ADMIN)
-    renderWithProviders(<App />, { route: sample(FULLSCREEN_SCREENS[0].path) })
-    expect(await screen.findByRole('heading', { level: 1, name: 'Controle da sessão ao vivo' })).toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'Menu principal' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Detalhes da sessão' })).toHaveAttribute('href', '/sessoes/s1')
   })
 
   it('o link de voltar usa os parâmetros da rota', async () => {

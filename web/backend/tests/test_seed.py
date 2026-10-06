@@ -5,17 +5,25 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import func, select
 
-from app import seed, seed_media
+from app import seed, seed_media, seed_tracking
 from app.db import SessionLocal
-from app.models import AuditLog, Patient, RolePermission, Stimulus, User
+from app.models import AuditLog, Patient, RolePermission, Session, SessionMarker, Stimulus, User
 
 from .accounts import API, login, token_from
 
 
 @pytest.fixture(autouse=True)
 def short_demo_videos(monkeypatch):
-    """Os vídeos de exemplo têm 45 s e 80 s; nos testes, 1 s basta."""
+    """Os vídeos de exemplo têm 45 s e 80 s; nos testes, 1 s basta. A gravação dos dados de exemplo
+    fica mínima."""
     monkeypatch.setattr(seed_media, "VIDEOS", [dataclasses.replace(v, seconds=1) for v in seed_media.VIDEOS])
+    monkeypatch.setattr(seed_tracking, "DEMO_CAPTURE", {"width": 64, "height": 40, "fps": 2, "jpegQuality": 60})
+
+
+@pytest.fixture
+def no_demo_data(monkeypatch):
+    """Para os testes que não olham as sessões: os dados coletados de exemplo são o que mais demora."""
+    monkeypatch.setattr(seed_tracking, "generate", lambda db, session, sequence: False)
 
 
 def users():
@@ -51,7 +59,7 @@ def test_without_admin_the_seed_asks_for_one(client, capsys):
         assert db.scalar(select(RolePermission.role).limit(1)) is not None
 
 
-def test_demo_users_are_created_once(client, capsys):
+def test_demo_users_are_created_once(client, capsys, no_demo_data):
     assert seed.main(["--demo"]) == 0
     created = users()
     assert len(created) == 8
@@ -66,7 +74,7 @@ def test_demo_users_are_created_once(client, capsys):
     assert len(users()) == 8
 
 
-def test_demo_creates_patients_and_stimuli_once(client, capsys):
+def test_demo_creates_patients_and_stimuli_once(client, capsys, no_demo_data):
     assert seed.main(["--demo"]) == 0
     with SessionLocal() as db:
         codes = sorted(db.scalars(select(Patient.code)))
@@ -97,7 +105,7 @@ def test_demo_creates_patients_and_stimuli_once(client, capsys):
     assert client.get(f"{API}/patients/{pid}/consent").content.startswith(b"%PDF-")
 
 
-def test_demo_creates_the_sessions_of_the_prototypes_once(client, capsys):
+def test_demo_creates_the_sessions_of_the_prototypes_once(client, capsys, no_demo_data):
     assert seed.main(["--demo"]) == 0
     assert "Sessões de exemplo: 26 criadas." in capsys.readouterr().out
     seed.main(["--demo"])
@@ -120,3 +128,49 @@ def test_demo_creates_the_sessions_of_the_prototypes_once(client, capsys):
     ]
     login(client, "carlos.lima@exemplo.com", seed.DEMO_PASSWORD)
     assert client.get(f"{API}/sessions").json()["total"] == 26
+
+
+def test_demo_sessions_get_collected_data(client, capsys):
+    """As Concluídas e as Interrompidas passam pela ingestão com dados sintéticos e continuam com o
+    status da W12; as Aguardando dados ficam sem dados, como se o óculos ainda enviasse."""
+    assert seed.main(["--demo"]) == 0
+    assert "Dados coletados de exemplo: 21 sessões" in capsys.readouterr().out
+    with SessionLocal() as db:
+        sessions = list(db.scalars(select(Session)))
+        executed = [s for s in sessions if s.status in ("completed", "interrupted")]
+        assert len(executed) == 21
+        for s in executed:
+            assert s.end_reason == ("button_b" if s.status == "completed" else "interrupted")
+            assert s.analysis["recording"]["status"] == "ready" and s.data_received_at is not None
+            assert s.ended_at > s.started_at and s.exposures
+        assert all(s.analysis is None for s in sessions if s.status not in ("completed", "interrupted"))
+        markers = db.scalar(select(func.count()).select_from(SessionMarker))
+        assert markers > 0
+
+    login(client, "ana.souza@exemplo.com", seed.DEMO_PASSWORD)
+    rows = client.get(f"{API}/sessions", params={"q": "P-010", "status": "completed"}).json()["items"]
+    detail = client.get(f"{API}/sessions/{rows[0]['id']}").json()
+    assert detail["data_status"] == "ready"
+    assert [e["position"] for e in detail["exposures"]] == list(range(1, 13))  # rostos, todos com 5 s
+    assert all(e["screen_seconds"] == 5.0 for e in detail["exposures"])
+    analysis = client.get(f"{API}/sessions/{rows[0]['id']}/analysis").json()
+    assert all(e["fixation_count"] > 0 for e in analysis["exposures"])
+    assert [m["text"] for m in analysis["markers"]] == [
+        "Paciente movimentou a cabeça", "Equipe de enfermagem entrou no quarto",
+    ]
+
+
+def test_demo_data_fills_sessions_seeded_before(client, capsys, monkeypatch):
+    """Um banco semeado antes de existir a análise ganha os dados ao rodar o --demo de novo, uma vez."""
+    generate = seed_tracking.generate
+    monkeypatch.setattr(seed_tracking, "generate", lambda db, session, sequence: False)
+    seed.main(["--demo"])
+    monkeypatch.setattr(seed_tracking, "generate", generate)
+    capsys.readouterr()
+
+    seed.main(["--demo"])
+    out = capsys.readouterr().out
+    assert "Sessões de exemplo: já existem." in out
+    assert "Dados coletados de exemplo: 21 sessões" in out
+    seed.main(["--demo"])
+    assert "Dados coletados de exemplo" not in capsys.readouterr().out

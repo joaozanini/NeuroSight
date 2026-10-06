@@ -12,8 +12,8 @@
 | 1 Contas, permissões e auditoria | concluída | `fase-1-contas` (`0c472a9` backend, `6141467` frontend) | Ver as notas da Fase 1 abaixo. |
 | 2 Pacientes e estímulos | concluída | `fase-2-pacientes-estimulos` (`975b223` backend, `e29d8ff` frontend) | Ver as notas da Fase 2 abaixo. |
 | 3 Configuração de sessões | concluída | `fase-3-sessoes` (`5be29c9` backend, `8e79b2c` frontend) | Ver as notas da Fase 3 abaixo. |
-| 4 Execução ao vivo + simulador | não iniciada | | |
-| 5 Ingestão e análise | não iniciada | | |
+| 4 Execução ao vivo + simulador | concluída | `fase-4-ao-vivo` (`37e1ca8` backend e simulador, `cd33621` frontend) | Ver as notas da Fase 4 abaixo. |
+| 5 Ingestão e análise | concluída | `fase-5-ingestao-analise` (`80fe1c0` backend e simulador, `d323355` frontend) | Ver as notas da Fase 5 abaixo. |
 | 6 Início (dashboard) | não iniciada | | |
 | 7 App do óculos (UE 5.5) | não iniciada | | |
 | 8 Deploy e documentação | não iniciada | | |
@@ -121,6 +121,73 @@
 - **Testes**: `tests/test_sessions.py` (`make_patient`, `make_stimulus`, `create`, `set_session`); no
   front, `src/pages/sessions/SessionPages.test.tsx`. O `test/setup.ts` desliga o `window.scrollTo`.
 - O selo de sessões do menu continua para a Fase 6.
+
+### Notas da Fase 4 (para as próximas sessões)
+- **Protocolo**: `docs/protocolo-oculos.md` (aprovado pelo usuário antes do hub) é o contrato do
+  óculos, do simulador e da Fase 7. Mudou o contrato, mude o documento junto.
+- **Peças**: `services/live_hub.py` (hub em memória, thread-safe; o envio só enfileira na conexão),
+  `services/execution.py` (o `load`, as transições e a auditoria do início e do fim),
+  `routers/live.py` (site) e `routers/device.py` (óculos). Tabela `devices` e, em `sessions`,
+  `device_id` (o óculos que executou; só ele envia os dados) e `data_received_at` (o `complete`).
+- **Onde ficam os dados**: `storage.session_tracking(id)` (`<media>/sessions/<id>/tracking.json`) e
+  `storage.session_frames_dir(id)` (`frames/NNNNNN.jpg`). O JSON é conferido só por cima (`version`
+  2 e `meta.sessionId`); validar o resto, montar o MP4 (`services/video.assemble_mp4` com
+  `frames[]` do JSON) e passar a Concluída ou Interrompida é da Fase 5, a partir do `complete`
+  (`routers/device.complete_upload`, que hoje só grava `data_received_at`). A interrompida termina
+  como Interrompida; o B e a queda, como Concluída (sugestão; `end_reason` diz o motivo).
+- **Simulador**: `--truth arquivo.json` grava as exposições (`on`/`off` em segundos da sessão) e as
+  fixações geradas (`start`, `end`, `duration`, `u`, `v` no estímulo), mais `samples` e
+  `validSamples`, para os testes da Fase 5. Fixações de 200 a 600 ms a mais de 0,12 UV uma da outra
+  (cerca de 7°: o painel tem 2,4 × 1,35 m a 2 m), sacadas de 30 ms, piscadas de 150 ms (inválidas) e
+  latência de 120 a 250 ms até a 1ª fixação. Olhar a 72 Hz, facial a 30 Hz, quadros a 10 fps
+  (`--frame-fps`). A lógica de geração está nas classes `Scanpath` e `Recording` do script.
+- **Retrato ao vivo** (`GET`/`WS /sessions/{id}/live`): status, óculos, `nearby`, carga e o que está na
+  tela, com `version` crescente. No site, `useLiveSession` e `keepNewest` (`src/api/live.ts`); as
+  chaves do React Query ficam em `['live', id]`, fora de `['sessions']`, de propósito.
+- **Para a Fase 6**: o selo do menu conta Em andamento + Aguardando dados; `data_received_at` diz se o
+  óculos já terminou de enviar ("em envio" no KPI do admin).
+- **Testes**: `tests/test_live.py` (o óculos é um WebSocket do TestClient; `sync(ws)` manda um ping e
+  espera o pong para saber que o servidor já tratou o que veio antes; o `conftest` zera o hub). No
+  front, `src/test/socket.ts` (WebSocket falso; `await sockets.push(...)`) e
+  `src/pages/sessions/live/LivePages.test.tsx`.
+- **Docker**: o `Dockerfile` ainda sobe com 2 workers, e o hub exige 1 (Fase 8). O compose já repassa
+  `QUESTPRO_DEVICE_KEY`.
+
+### Notas da Fase 5 (para as próximas sessões)
+- **Peças**: `services/tracking.py` (confere o JSON v2 no `PUT tracking`; 422 com o caminho do
+  problema), `services/analysis.py` (só cálculo, com numpy), `services/ingestion.py` (fila com uma
+  thread depois do `complete`: MP4, análise e status final; `drain()` nos testes e `resume_pending()`
+  ao subir) e `routers/session_data.py` (análise, gravação e downloads). O protocolo ganhou as seções
+  4.2 (o que o servidor confere) e 4.3 (o que calcula).
+- **Tabelas** (migração `0006_session_analysis`): `sessions.analysis` (JSON adiado: resumo,
+  parâmetros, tamanhos, gravação com `frame_t` e `frame_gaze`, séries da legenda padrão a 10 Hz e os
+  nomes das expressões; `{"error": ...}` quando falha) e `session_exposures` (uma linha por exibição,
+  `seq` na ordem em que apareceu, com as métricas; `fixations`, `heat` e `face_means` adiados).
+- **Estado dos dados**: `data_status` no detalhe da sessão (`none`, `waiting`, `processing`, `failed`
+  com `data_error`, `ready`). A W16 completa e o "Analisar dados" só aparecem com `ready`. Status
+  final pelo `end_reason` (`ingestion.FINAL_STATUS`): Concluída pelo B, Interrompida nos outros.
+- **Rotas**: `GET /sessions/{id}/analysis`, `GET /sessions/{id}/recording` (Range, sem auditoria) e
+  `GET /sessions/{id}/downloads/{tracking|recording|csv}?tz=` ("Exportar os dados", auditado como
+  Exportação com o campo Arquivo). Nome dos arquivos: `<código>_<aaaa-mm-dd_hhmm>_<rastreamento.json |
+  gravacao.mp4 | estimulos.csv>`. Mesma regra de quem vê: sessão que a pessoa não vê responde 404.
+- **Gerador sintético**: `app/synthetic.py` (`Recording`, `Scanpath`, `VirtualClock`, `play`); o
+  simulador o importa (precisa do repositório e do venv do backend) e `app/seed_tracking.py` roda o
+  roteiro das sessões de exemplo. O `--demo` leva cerca de 1 min a mais (gravação de 640 × 400 a
+  10 fps) e, rodado de novo, completa os dados que faltarem.
+- **Para a Fase 6**: "Tempo de coleta no mês" pode usar `ended_at − started_at` (ou `analysis.duration`,
+  no relógio do óculos); "em envio" é Aguardando dados sem `data_received_at`, e com ele está
+  processando. As sessões de exemplo executadas têm dados, e algumas têm marcações.
+- **Para a Fase 7**: os parâmetros do I-DT (`QUESTPRO_FIXATION_DISPERSION_DEG` e `_MIN_MS`) foram
+  ajustados ao ruído do simulador; com o olhar real do Quest Pro, confira as fixações e ajuste se preciso.
+- **Para a Fase 8**: os frames JPEG continuam no disco ao lado do MP4 (espaço em disco); com os 2
+  workers do Docker atual, cada processo tem a própria fila (o `FOR UPDATE` no fim deixa só uma
+  gravar). O teste de fumaça com Playwright da "Verificação ponta a ponta" continua fora do
+  repositório, como nas fases anteriores: para entrar, falta decidir a dependência (playwright-core e
+  o Chromium).
+- **Testes**: `tests/test_analysis.py`, `tests/test_session_data.py` (`executed()` leva a sessão pelo
+  óculos do TestClient e envia os dados do gerador) e `tests/test_simulator.py` (o simulador de
+  verdade contra um uvicorn de teste, cerca de 10 s). No front, `pages/sessions/analysis/AnalysisPage.test.tsx`;
+  o `test/setup.ts` desliga o canvas e simula o play e o pause do vídeo.
 
 ### Decisões em aberto
 - **Servidor de produção** (domínio, proxy reverso existente): confirmar na Fase 8.
@@ -289,6 +356,107 @@ _Cada sessão anota aqui, com a fase, o que fez diferente deste plano e por quê
   filtros, ordem da W06, assistente completo (arrastar com mouse e teclado), W16 com edição, Bruno sem
   acesso, admin compartilhando pela W18, Bruno com acesso, duplicar + Salvar e preparar, W08, W11,
   W22/W23 e W20.
+- **Fase 4, decisões combinadas com o usuário** (com o protocolo, antes do hub): uma chave só para
+  todos os óculos (`QUESTPRO_DEVICE_KEY`, vazia = aberta no dev), com cada óculos identificado pelo
+  `deviceId` que ele gera e registrado na tabela `devices`; "Iniciar sessão" exige o eye tracking
+  ativo, e o emotion tracking inativo só gera um aviso na W14.
+- **Fase 4, rotas a mais**: `POST /sessions/{id}/release` ("Cancelar" da W14 manda o `unload`) e o
+  retrato da sessão também por `GET /sessions/{id}/live`. O `devices/nearby` ficou em
+  `/devices/nearby` (é do navegador, não da sessão).
+- **Fase 4, retrato com versão**: a resposta de uma rota (ex.: o `prepare`) chegava depois do
+  retrato mais novo vindo do WebSocket e o voltava ("0 de 1" depois de "1 de 1"; achado na
+  verificação no navegador). O retrato ganhou `version` (microssegundos, cresce mesmo se a API
+  reiniciar) e o site fica com o maior.
+- **Fase 4, ciclo e fim**: a sessão começa na tela neutra (o pesquisador escolhe o 1º estímulo, como diz
+  a W14); `previous` no primeiro e `next` depois da tela neutra do fim são ignorados. O fim pelo B
+  fica na auditoria em nome do responsável, com o IP do óculos e o user-agent
+  `NeuroSight/<versão> (<nome>; <modelo>)` ("App NeuroSight no Meta Quest" na W23). O óculos que volta
+  sem a sessão em andamento encerra-a como `disconnected`; o JSON que chega sem o `ended` também
+  encerra (com o `meta.endReason`). O `complete` só grava `data_received_at`: o status segue
+  Aguardando dados até a Fase 5.
+- **Fase 4, W14** (o protótipo é estático): o óculos que aparece na mesma rede é escolhido sozinho,
+  uma vez; sem óculos, o cartão diz "Procurando o óculos / Nenhum óculos nesta rede ainda" e o campo
+  vira "O óculos está em outra rede? Digite o código…"; pareado pelo código, "Pareado pelo código" e
+  "Conectado pelo código de pareamento."; desconectado, selo "Desconectado". Os rastreamentos mostram
+  Ativo, Sem permissão, Indisponível ou Desligado (o eye tracking inativo em vermelho, o facial em
+  laranja). O rodapé muda conforme o que falta ("Aguarde o óculos carregar os estímulos.", "Marque que
+  o óculos está no paciente para iniciar." etc.). Estímulo que não carrega aparece com "Tentar de
+  novo". Cancelar libera o óculos e volta para a W16. Só o responsável (o `can_run`) vê a tela.
+- **Fase 4, W15** (o protótipo é estático): na tela neutra, o cabeçalho diz "Antes do estímulo 1 de N"
+  ou "Depois do estímulo N de M" e a legenda "Tela neutra" (no fim, "Fim da sequência. Aperte o B no
+  óculos para encerrar."); com vídeo pausado o botão vira "Retomar vídeo"; as pílulas mostram "Sem
+  gravação", "Óculos desconectado" (com um aviso e os comandos desligados) e os rastreamentos
+  inativos. Vídeos tocam mudos na prévia, acompanhando a pausa (a sincronia é aproximada). Marcações
+  da mais nova para a mais antiga. "Interromper sessão" pede confirmação num modal. Quando a sessão
+  acaba (B ou interrupção), volta para a W16 com um aviso. Logo só com o traço (`Logo variant="mark"`).
+  A prévia segue a proporção do PNG (1247 × 652).
+- **Fase 4, simulador**: quadros a 10 fps por padrão (`--frame-fps`; o `meta.capture.fps` diz o que foi
+  gravado), facial a 30 Hz, cache dos estímulos e envios pendentes em `~/.neurosight-simulador`.
+- **Fase 4, deploy**: o compose passou a repassar `QUESTPRO_DEVICE_KEY` e o `.env.example` traz as
+  variáveis da captura; o `Dockerfile` continua com 2 workers até a Fase 8 (o `DEPLOY.md` avisa que a
+  execução ao vivo exige 1). Os placeholders de tela cheia saíram (não sobrou nenhum).
+- **Fase 4, verificação**: além dos testes (migrações também num PostgreSQL descartável), o fluxo
+  rodou num Chromium headless contra o build servido pela API (SQLite, `--demo`) com dois simuladores:
+  W14 achando o óculos pela rede e trocando para outro pelo código (o primeiro recebeu o `unload`),
+  carregamento, início, próximo, tela neutra, anterior, clique na sequência, troca automática,
+  marcação e o B (`--auto-end`) levando a Aguardando dados com o envio completo; sessão com vídeo
+  (pausar e retomar) interrompida pelo modal; queda do óculos no meio (W15 "Óculos desconectado") e a
+  volta dele encerrando a sessão como `disconnected`; W22 e W23 com o início e o fim.
+- **Fase 5, decisões combinadas com o usuário** (no início da fase): as sessões de exemplo executadas
+  ganham dados sintéticos (o gerador do simulador foi para `app/synthetic.py`, porque a imagem Docker
+  não leva `web/scripts`); a queda (`disconnected`) termina como Interrompida, e não como Concluída (a
+  sugestão da Fase 4); e uma linha por exibição: o estímulo que volta à tela aparece de novo nos
+  "Estímulos exibidos", na tira da W17 e no CSV, com as próprias métricas (o plano dizia "uma linha
+  por estímulo"; sem repetição, dá no mesmo).
+- **Fase 5, I-DT com junção**: além de 1° e 100 ms, fixações vizinhas a menos de 75 ms e 0,5° viram
+  uma. Sem isso, o ruído do próprio simulador (σ perto de 0,1°) partia de 1 a 6 fixações por sessão
+  (as de até 600 ms chegam perto de 1° de amplitude); com a junção, a contagem bate com a gerada. A
+  duração vai do primeiro ao último instante mais um período de amostragem (sem viés), e os dois
+  parâmetros do plano viraram `QUESTPRO_FIXATION_*`.
+- **Fase 5, onde ficam os resultados**: em `sessions.analysis` e `session_exposures`, como no plano,
+  mas com o JSON grande adiado (`deferred`) para não pesar nas listas; o mapa de calor é uma grade de
+  80 × 80 (as células com olhar), e não as amostras, para não crescer com a duração; as séries
+  guardadas são só as três da legenda padrão, e as 70 expressões entram como média por exibição no CSV.
+- **Fase 5, validação no envio**: o `PUT tracking` confere o contrato inteiro (seção 4.2 do protocolo)
+  e responde 422 com o caminho do problema; `meta.capture` virou obrigatório quando há `frames` (um
+  teste da Fase 4 mandava frames sem ele).
+- **Fase 5, ingestão**: o status só muda no fim do processamento; uma falha deixa Aguardando dados com o
+  motivo (aviso na W16) e é tentada de novo ao subir a API; o `complete` repetido numa sessão já
+  processada responde 200 com o status final; um JSON reenviado reabre o envio até o próximo
+  `complete`. Os frames JPEG continuam no disco ao lado do MP4.
+- **Fase 5, W16** (o protótipo é estático): "N exibidos" conta os estímulos distintos; antes dos dados,
+  a sequência continua, com um aviso ("O óculos ainda está enviando…", "…estão sendo processados…" ou
+  a falha), e a página se atualiza a cada 5 s; "Analisar dados" só com os dados prontos; sem gravação,
+  "Sessão sem gravação"; sem "Exportar os dados", os arquivos aparecem sem Baixar. A W15 já leva o
+  status novo para a W16 ao terminar. Medidas do PNG: linhas de 48 px, miniaturas de 48 × 30, colunas
+  de 654 e 397 px, marcações em 15 px e o detalhe dos arquivos em 14 px.
+- **Fase 5, W17** (o protótipo é estático): a exibição escolhida fica na URL (`?exibicao=N`) e
+  escolher leva a gravação ao começo dela; o cursor do gráfico segue a gravação (sem gravação, fica no
+  começo da exibição); a tira também anda pelas setas; o gráfico tem faixas clicáveis (e pelo
+  teclado), marcações com o texto cortado antes da próxima e o eixo de tempo em passos de 5 s a 1 h.
+  O mapa de calor usa o tempo de olhar das amostras válidas (σ de 4% da largura, perto de 2°), e a
+  trajetória, as fixações numeradas. A gravação fica numa tela de 16:10, como no PNG, com o quadro
+  contido (o óculos grava 1024 × 1024 por padrão). Estados a mais: sem gravação, sem facial, sem
+  estímulo exibido e dados não processados. Os textos da W17 no PNG são menores que os da W16
+  (títulos de 18 px, apoio de 15 px, rótulos de 14 px e valores de 22 px).
+- **Fase 5, simulador**: a coleta passou a ser estrita (`< t`), para a amostra do instante da troca ir
+  para a tela nova; a piscada no rosto usa a amostra de olhar do mesmo instante (antes, a última do
+  trecho, o que no relógio virtual errava as piscadas); o vídeo é lido em sequência e a imagem é
+  reduzida uma vez só; o `--truth` traz as amostras de cada exibição.
+- **Fase 5, PostgreSQL**: dois problemas que o SQLite dos testes não pega, achados na verificação: o
+  `FOR UPDATE` com os joins automáticos (paciente e responsável) é recusado (agora trava só a linha da
+  sessão), e o JSONB não guarda a ordem das chaves (a API ordena as séries pela legenda).
+- **Fase 5, teste instável da W13**: "Salvar e preparar leva à preparação" já falhava às vezes no commit
+  anterior (2 de 3 rodadas da suíte inteira): o `findBy` achava o título do estado "carregando" da W14,
+  que era trocado antes do `expect`. Virou `waitFor`.
+- **Fase 5, verificação**: além dos testes (migrações também num PostgreSQL descartável), o fluxo rodou
+  num Chromium headless contra o build servido pela API sobre PostgreSQL com o `--demo`: W16 e W17 das
+  sessões de exemplo comparadas com os PNGs (medidas e larguras de texto), e uma sessão nova com o
+  simulador (duas imagens com tempo, uma de troca manual e um vídeo; marcação, pausa e retomada,
+  Anterior repetindo um estímulo e o B automático): W16 de Aguardando dados a Concluída, 6 exibições
+  com início, fim, amostras e fixações iguais às do `--truth` e o tempo até a 1ª fixação a até 14 ms,
+  a gravação tocando com o círculo, o JSON baixado idêntico ao enviado, o CSV, o MP4 e as três
+  Exportações na W22 e na W23.
 
 ---
 

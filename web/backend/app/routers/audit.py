@@ -20,6 +20,7 @@ from ..schemas.audit import AuditDetail, AuditFilters, AuditItem, AuditPage, Opt
 from ..security import require_permission
 from ..services import audit
 from ..services.permissions import ROLE_LABELS
+from ..utils import csv_cell
 
 router = APIRouter()
 
@@ -137,7 +138,7 @@ def _csv_rows(filters: AuditQuery, zone: ZoneInfo) -> Iterator[str]:
     stmt = filters.apply(select(AuditLog)).order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
     with SessionLocal() as db:
         for i, entry in enumerate(db.scalars(stmt.execution_options(yield_per=CSV_BATCH)), 1):
-            writer.writerow([_cell(v) for v in _csv_values(entry, zone)])
+            writer.writerow([csv_cell(v) for v in _csv_values(entry, zone)])
             if i % CSV_BATCH == 0:
                 yield flush()
     yield flush()
@@ -158,11 +159,6 @@ def _csv_values(entry: AuditLog, zone: ZoneInfo) -> list[str]:
         entry.user_agent or "",
         changes,
     ]
-
-
-def _cell(value: str) -> str:
-    # Um texto que começa com = + - @ viraria fórmula ao abrir na planilha.
-    return "'" + value if value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
 
 
 @router.get("/audit/{entry_id}", response_model=AuditDetail)

@@ -6,6 +6,10 @@
   overflow: hidden;
 }
 
+.bare {
+  overflow: hidden;
+}
+
 .scroll {
   overflow-x: auto;
 }

@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ChartLine } from 'lucide-react'
 import { hasPermission, useCurrentUser } from '../../api/auth'
 import { ApiError } from '../../api/client'
-import { controlSessionPath, prepareSessionPath, sessionsApi, sessionsKeys } from '../../api/sessions'
+import { analysisSessionPath, controlSessionPath, prepareSessionPath, sessionsApi, sessionsKeys } from '../../api/sessions'
 import type { SequenceItem, SessionDetail } from '../../api/sessions'
 import { KIND_LABELS } from '../../api/stimuli'
 import Badge from '../../components/Badge/Badge'
@@ -25,9 +25,10 @@ import TextField from '../../components/TextField/TextField'
 import TextLink from '../../components/TextLink/TextLink'
 import Textarea from '../../components/Textarea/Textarea'
 import { useToast } from '../../components/Toast/toastContext'
-import { formatDateTime, formatDuration, formatNumber, sentence } from '../../lib/format'
+import { formatDateTime, formatDuration, formatNumber, plural, sentence } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { screenTimeText, sequenceHeadline } from './sequence'
+import { DataNotice, ExposuresCard, FilesCard, MarkersCard, exhibitedCount } from './SessionData'
 import VisibilityLabel from './VisibilityLabel'
 import VisibilityModal from './VisibilityModal'
 import { infoSchema } from './wizard/InfoStep'
@@ -36,13 +37,20 @@ import styles from './SessionDetailPage.module.css'
 
 const BACK = { to: '/sessoes', label: 'Sessões' }
 
-// W16 (cabeçalho, resumo, informações e a sequência) e o modal de visibilidade (W18). Os estímulos
-// exibidos, as marcações e os arquivos chegam com os dados coletados (Fase 5).
+// Enquanto o óculos envia e o servidor processa os dados, a W16 confere de tempos em tempos.
+const DATA_POLL_MS = 5000
+
+// W16 (cabeçalho, resumo, informações e, com os dados coletados, os estímulos exibidos, as marcações e
+// os arquivos; antes deles, a sequência) e o modal de visibilidade (W18).
 export default function SessionDetailPage() {
   const { sessionId = '' } = useParams()
   const session = useQuery({
     queryKey: sessionsKeys.detail(sessionId),
     queryFn: ({ signal }) => sessionsApi.get(sessionId, signal),
+    refetchInterval: (query) => {
+      const status = query.state.data?.data_status
+      return status === 'waiting' || status === 'processing' ? DATA_POLL_MS : false
+    },
   })
   usePageTitle(session.data?.title ?? 'Sessão')
 
@@ -69,6 +77,7 @@ function SessionView({ session }: { session: SessionDetail }) {
   const me = useCurrentUser()
   const [visibilityOpen, setVisibilityOpen] = useState(false)
   const executed = session.started_at !== null
+  const ready = session.data_status === 'ready'
   const canDuplicate = hasPermission(me, 'sessions.run')
   const patient = session.patient.name ? `Paciente ${session.patient.code}, ${session.patient.name}` : `Paciente ${session.patient.code}`
 
@@ -77,9 +86,9 @@ function SessionView({ session }: { session: SessionDetail }) {
     primary = <LinkButton to={prepareSessionPath(session.id)}>Preparar sessão</LinkButton>
   } else if (session.status === 'running' && session.can_run) {
     primary = <LinkButton to={controlSessionPath(session.id)}>Abrir controle</LinkButton>
-  } else if (session.status === 'completed' || session.status === 'interrupted') {
+  } else if (ready) {
     primary = (
-      <LinkButton to={`/sessoes/${session.id}/analise`} icon={ChartLine}>
+      <LinkButton to={analysisSessionPath(session.id)} icon={ChartLine}>
         Analisar dados
       </LinkButton>
     )
@@ -127,7 +136,7 @@ function SessionView({ session }: { session: SessionDetail }) {
           </div>
           <div>
             <dt>Estímulos</dt>
-            <dd>{formatNumber(session.items.length)} na sequência</dd>
+            <dd>{ready ? plural(exhibitedCount(session.exposures), 'exibido', 'exibidos') : `${formatNumber(session.items.length)} na sequência`}</dd>
           </div>
           <div>
             <dt>Gravação</dt>
@@ -143,7 +152,20 @@ function SessionView({ session }: { session: SessionDetail }) {
       </Card>
 
       <Information session={session} />
-      <Sequence session={session} />
+      {ready ? (
+        <div className={styles.data}>
+          <ExposuresCard session={session} />
+          <div className={styles.sideColumn}>
+            <MarkersCard sessionId={session.id} />
+            <FilesCard session={session} />
+          </div>
+        </div>
+      ) : (
+        <>
+          {executed && session.status !== 'running' && <DataNotice session={session} />}
+          <Sequence session={session} />
+        </>
+      )}
 
       <VisibilityModal session={session} open={visibilityOpen} onClose={() => setVisibilityOpen(false)} />
     </>

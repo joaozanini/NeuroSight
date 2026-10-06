@@ -1,0 +1,136 @@
+/* Gravação da W17: o vídeo com o círculo do olhar e os controles (botão azul, barra e relógio). */
+.player {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-thumbnail);
+}
+
+.frame {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.video,
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.video {
+  object-fit: contain;
+}
+
+.overlay {
+  pointer-events: none;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.play {
+  display: inline-flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  transition: background-color 0.15s ease;
+}
+
+.play:hover {
+  background: var(--color-primary-hover);
+}
+
+.play:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+/* A barra: trilho cinza com o trecho já tocado em azul (--progress) e o marcador escondido até o foco. */
+.range {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--color-primary) var(--progress), var(--color-fill-neutral) var(--progress));
+}
+
+.range::-moz-range-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--color-primary) var(--progress), var(--color-fill-neutral) var(--progress));
+}
+
+.range::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-primary);
+  opacity: 0;
+  appearance: none;
+}
+
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-primary);
+  opacity: 0;
+}
+
+.range:hover::-webkit-slider-thumb,
+.range:focus-visible::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.range:hover::-moz-range-thumb,
+.range:focus-visible::-moz-range-thumb {
+  opacity: 1;
+}
+
+.range:focus-visible {
+  outline: none;
+}
+
+.range:focus-visible::-webkit-slider-runnable-track {
+  box-shadow: var(--focus-ring);
+}
+
+.clock {
+  flex: 0 0 auto;
+  font-size: var(--font-size-hint);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}

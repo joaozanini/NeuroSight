@@ -106,9 +106,14 @@ const DETAIL: SessionDetail = {
     { position: 3, stimulus_id: 'st9', name: 'Rosto antigo', kind: 'image', archived: true, duration_seconds: null, media_duration_seconds: null, thumbnail_url: '/api/v1/stimuli/st9/thumbnail' },
   ],
   duplicated_from: null,
+  data_status: 'none',
+  data_error: null,
+  exposures: [],
+  files: null,
   can_edit: true,
   can_run: true,
   can_change_visibility: false,
+  can_export: true,
 }
 
 describe('W12 Lista de sessões', () => {
@@ -291,7 +296,9 @@ describe('W13 Nova sessão', () => {
     expect(await screen.findByText('Este paciente está inativo e não recebe novas sessões.')).toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: 'Salvar e preparar' }))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Preparar sessão' })).toBeInTheDocument()
+    // A preparação troca o título do "carregando" pelo da sessão carregada: o elemento achado por um
+    // findBy pode sair da página antes do expect, então a busca se repete até o título ficar.
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Preparar sessão' })).toBeInTheDocument())
   })
 
   it('duplicar traz as informações e a sequência, sem os arquivados, e pede o paciente', async () => {
@@ -326,6 +333,29 @@ describe('W13 Nova sessão', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Sem acesso' })).toBeInTheDocument()
   })
 })
+
+// Executada, com os dados processados (W16 da Fase 5).
+const EXECUTED: SessionDetail = {
+  ...DETAIL,
+  status: 'completed',
+  end_reason: 'button_b',
+  started_at: '2026-09-29T17:26:00Z',
+  ended_at: '2026-09-29T17:27:50Z',
+  date: '2026-09-29T17:26:00Z',
+  duration_seconds: 110,
+  data_status: 'ready',
+  exposures: [
+    { seq: 1, position: 1, stimulus_id: 'st1', name: 'Rosto neutro 01', kind: 'image', archived: false, thumbnail_url: '/api/v1/stimuli/st1/thumbnail', on_t: 20.2, screen_seconds: 5 },
+    { seq: 2, position: 2, stimulus_id: 'st3', name: 'Ondas na praia', kind: 'video', archived: false, thumbnail_url: '/api/v1/stimuli/st3/thumbnail', on_t: 25.2, screen_seconds: 45 },
+    { seq: 3, position: 1, stimulus_id: 'st1', name: 'Rosto neutro 01', kind: 'image', archived: false, thumbnail_url: '/api/v1/stimuli/st1/thumbnail', on_t: 72.4, screen_seconds: 65 },
+  ],
+  files: { tracking_bytes: 3_355_443, recording: { status: 'ready', size_bytes: 435_159_040 } },
+}
+
+const MARKERS = [
+  { id: 1, t: 28.4, text: 'Paciente movimentou a cabeça', created_at: '2026-09-29T17:26:28Z', created_by_name: 'Ana Souza' },
+  { id: 2, t: 65.1, text: 'Equipe de enfermagem entrou no quarto', created_at: '2026-09-29T17:27:05Z', created_by_name: 'Ana Souza' },
+]
 
 describe('W16 Detalhes da sessão e W18 Visibilidade', () => {
   it('mostra o cabeçalho, o resumo, as informações e a sequência', async () => {
@@ -376,10 +406,7 @@ describe('W16 Detalhes da sessão e W18 Visibilidade', () => {
 
   it('executada: Analisar dados, sem Preparar e sem mudar a gravação', async () => {
     const user = userEvent.setup()
-    mockApi({
-      'GET /me': RESEARCHER,
-      'GET /sessions/:id': { ...DETAIL, status: 'completed', started_at: '2026-09-29T17:26:00Z', ended_at: '2026-09-29T17:27:50Z', date: '2026-09-29T17:26:00Z', duration_seconds: 110 },
-    })
+    mockApi({ 'GET /me': RESEARCHER, 'GET /sessions/:id': EXECUTED, 'GET /sessions/:id/markers': MARKERS })
     renderWithProviders(<App />, { route: '/sessoes/s3' })
     expect(await screen.findByRole('link', { name: 'Analisar dados' })).toHaveAttribute('href', '/sessoes/s3/analise')
     expect(screen.queryByRole('link', { name: 'Preparar sessão' })).not.toBeInTheDocument()
@@ -387,6 +414,71 @@ describe('W16 Detalhes da sessão e W18 Visibilidade', () => {
     expect(screen.getByText('Data e hora')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Editar informações' }))
     expect(screen.queryByRole('checkbox', { name: 'Gravar a sessão' })).not.toBeInTheDocument()
+  })
+
+  it('com os dados coletados: estímulos exibidos, marcações e arquivos', async () => {
+    mockApi({ 'GET /me': RESEARCHER, 'GET /sessions/:id': EXECUTED, 'GET /sessions/:id/markers': MARKERS })
+    renderWithProviders(<App />, { route: '/sessoes/s3' })
+    // Rosto neutro 01 apareceu duas vezes (o pesquisador voltou a ele): 2 estímulos exibidos, 3 linhas.
+    const summary = await screen.findByRole('region', { name: 'Resumo' })
+    expect(within(summary).getByText('2 exibidos')).toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: 'Sequência da sessão' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Estímulos exibidos' })).toBeInTheDocument()
+    expect(screen.getByText('Na ordem em que apareceram')).toBeInTheDocument()
+    const rows = within(screen.getByRole('table', { name: /Estímulos exibidos/ })).getAllByRole('row').slice(1)
+    expect(rows.map((r) => within(r).getAllByRole('cell').map((c) => c.textContent))).toEqual([
+      ['1', 'Rosto neutro 01', '00:20', '5,0 s'],
+      ['2', 'Ondas na praia', '00:25', '45,0 s'],
+      ['1', 'Rosto neutro 01', '01:12', '1 min 5 s'],
+    ])
+    const markers = await screen.findByRole('region', { name: 'Marcações' })
+    expect(within(markers).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '00:28Paciente movimentou a cabeça',
+      '01:05Equipe de enfermagem entrou no quarto',
+    ])
+    const files = screen.getByRole('region', { name: 'Arquivos' })
+    expect(within(files).getByText('JSON, 3,2 MB')).toBeInTheDocument()
+    expect(within(files).getByText('MP4, 415 MB')).toBeInTheDocument()
+    expect(within(files).getByRole('link', { name: 'Baixar os dados de rastreamento (JSON)' }).getAttribute('href')).toMatch(
+      /^\/api\/v1\/sessions\/s3\/downloads\/tracking\?tz=/,
+    )
+    expect(within(files).getByRole('link', { name: 'Baixar a gravação da sessão (MP4)' })).toHaveAttribute('download')
+  })
+
+  it('sem permissão de exportar, os arquivos aparecem sem Baixar; sem gravação, avisa', async () => {
+    mockApi({
+      'GET /me': RESEARCHER,
+      'GET /sessions/:id': { ...EXECUTED, can_export: false, files: { tracking_bytes: 2048, recording: { status: 'none', size_bytes: null } } },
+      'GET /sessions/:id/markers': [],
+    })
+    renderWithProviders(<App />, { route: '/sessoes/s3' })
+    const files = await screen.findByRole('region', { name: 'Arquivos' })
+    expect(within(files).getByText('Sessão sem gravação')).toBeInTheDocument()
+    expect(within(files).queryByRole('link')).not.toBeInTheDocument()
+    expect(await screen.findByText('Nenhuma marcação nesta sessão.')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['waiting', 'O óculos ainda está enviando os dados desta sessão.'],
+    ['processing', 'Os dados chegaram e estão sendo processados. Esta página se atualiza sozinha.'],
+    ['failed', 'Não foi possível processar os dados desta sessão: o JSON da sessão não pôde ser lido. O servidor tenta'],
+  ] as const)('aguardando dados (%s): aviso e a sequência, sem Analisar dados', async (dataStatus, text) => {
+    mockApi({
+      'GET /me': RESEARCHER,
+      'GET /sessions/:id': {
+        ...EXECUTED,
+        status: 'awaiting_data',
+        data_status: dataStatus,
+        data_error: dataStatus === 'failed' ? 'o JSON da sessão não pôde ser lido' : null,
+        exposures: [],
+        files: null,
+      },
+    })
+    renderWithProviders(<App />, { route: '/sessoes/s3' })
+    expect(await screen.findByText(text, { exact: false })).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Sequência da sessão' })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Resumo' })).getByText('3 na sequência')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Analisar dados' })).not.toBeInTheDocument()
   })
 
   it('o admin muda a visibilidade para pesquisadores escolhidos', async () => {

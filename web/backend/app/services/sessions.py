@@ -58,6 +58,20 @@ def visible_to(db: DbSession, user: User | None):
     return visible_clause(user, sees_all(db, user))
 
 
+def data_status(session: Session) -> tuple[str, str | None]:
+    """Em que pé estão os dados coletados (W16) e, se o processamento falhou, o motivo."""
+    if session.status in ("configured", "running"):
+        return "none", None
+    analysis = session.analysis or {}
+    if session.status == "awaiting_data":
+        if session.data_received_at is None:
+            return "waiting", None
+        if analysis.get("error"):
+            return "failed", analysis["error"]
+        return "processing", None
+    return ("ready", None) if analysis and not analysis.get("error") else ("none", None)
+
+
 def can_view(session: Session, user: User, all_sessions: bool) -> bool:
     if all_sessions or session.owner_id == user.id or session.visibility == "all":
         return True

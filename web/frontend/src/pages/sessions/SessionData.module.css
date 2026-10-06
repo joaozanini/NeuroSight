@@ -1,0 +1,152 @@
+/* W16: estímulos exibidos (tabela dentro do cartão), marcações e arquivos, medidos no PNG. */
+.exposuresHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 14px;
+}
+
+.heading {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 28px;
+}
+
+.order {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* Linhas de 48 px e cabeçalho de 38 px, como no PNG (as tabelas de lista têm 56 e 42). O seletor
+   leva o "table" para vencer o CSS da tabela, que pode entrar depois no pacote. */
+.exposuresTable table th {
+  height: 38px;
+}
+
+.exposuresTable table td {
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
+/* Flex de bloco: um inline-flex se alinharia pela linha de base do texto e esticaria a linha. */
+.stimulus {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.thumb {
+  flex: 0 0 48px;
+  width: 48px;
+  border-radius: var(--radius-sm);
+}
+
+.thumb svg {
+  width: 16px;
+  height: 16px;
+}
+
+.stimulusName {
+  color: var(--color-text);
+  font-weight: var(--font-weight-regular);
+}
+
+.side {
+  padding: 20px 20px 22px;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.markers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: -6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.markers li {
+  display: flex;
+  gap: 15px;
+  font-size: var(--font-size-hint);
+  line-height: 24px;
+}
+
+.markerTime {
+  flex: 0 0 auto;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.markerText {
+  color: var(--color-text-muted);
+}
+
+.files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 78px;
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.fileIcon {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+}
+
+.fileText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fileTitle {
+  font-size: var(--font-size-hint);
+  font-weight: var(--font-weight-semibold);
+  line-height: 24px;
+}
+
+.fileDetail {
+  font-size: var(--font-size-sm);
+  line-height: 22px;
+  color: var(--color-text-muted);
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  line-height: 24px;
+}
+
+.notice[data-tone='danger'] {
+  background: var(--color-danger-soft);
+}
+
+.noticeIcon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--color-primary);
+}
+
+.notice[data-tone='danger'] .noticeIcon {
+  color: var(--color-danger);
+}

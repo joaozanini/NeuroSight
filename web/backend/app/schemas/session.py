@@ -10,6 +10,9 @@ from .user import Role
 
 SessionStatus = Literal["configured", "running", "awaiting_data", "completed", "interrupted"]
 Visibility = Literal["private", "shared", "all"]
+# Os dados coletados: nenhum (antes de executar), esperando o óculos terminar de enviar, na fila de
+# processamento, falha no processamento ou prontos para a W16 e a W17.
+DataStatus = Literal["none", "waiting", "processing", "failed", "ready"]
 
 MAX_STIMULI = 200
 # Tempo de tela de uma imagem: de 0,1 s a 1 hora.
@@ -143,6 +146,34 @@ class SequenceItem(BaseModel):
     thumbnail_url: str
 
 
+class ExposureRow(BaseModel):
+    """Linha de "Estímulos exibidos" (W16), na ordem em que apareceram."""
+
+    seq: int
+    position: int
+    stimulus_id: str
+    name: str
+    kind: StimulusKind
+    archived: bool
+    thumbnail_url: str
+    # Segundos desde o início da sessão (relógio do óculos) e tempo na tela.
+    on_t: float
+    screen_seconds: float
+
+
+class RecordingFile(BaseModel):
+    # none: sessão sem gravação; failed: os frames chegaram, mas o MP4 não pôde ser montado.
+    status: Literal["ready", "failed", "none"]
+    size_bytes: int | None
+
+
+class SessionFiles(BaseModel):
+    """"Arquivos" da W16."""
+
+    tracking_bytes: int
+    recording: RecordingFile
+
+
 class SessionPatient(BaseModel):
     id: str
     code: str
@@ -177,7 +208,13 @@ class SessionDetail(BaseModel):
     duration_seconds: float | None
     items: list[SequenceItem]
     duplicated_from: SessionRef | None
+    data_status: DataStatus
+    # O motivo, quando o processamento dos dados falhou.
+    data_error: str | None
+    exposures: list[ExposureRow]
+    files: SessionFiles | None
     # O que a pessoa logada pode fazer com esta sessão.
     can_edit: bool
     can_run: bool
     can_change_visibility: bool
+    can_export: bool

@@ -22,12 +22,15 @@ import PatientsPage from './pages/patients/PatientsPage'
 import NewSessionPage from './pages/sessions/NewSessionPage'
 import SessionDetailPage from './pages/sessions/SessionDetailPage'
 import SessionsPage from './pages/sessions/SessionsPage'
+import SessionAnalysisPage from './pages/sessions/analysis/SessionAnalysisPage'
+import LiveControlPage from './pages/sessions/live/LiveControlPage'
+import PrepareSessionPage from './pages/sessions/live/PrepareSessionPage'
 import StimuliPage from './pages/stimuli/StimuliPage'
 import StimulusDetailPage from './pages/stimuli/StimulusDetailPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import SetPasswordPage from './pages/auth/SetPasswordPage'
-import { APP_SCREENS, FULLSCREEN_SCREENS } from './routes'
+import { APP_SCREENS } from './routes'
 
 // Vitrine dos componentes, só no `npm run dev` (fica fora do build de produção).
 const ComponentsPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/ComponentsPage')) : null
@@ -50,9 +53,7 @@ export default function App() {
 
       <Route element={<RequireAuth />}>
         <Route element={<FullscreenLayout />}>
-          {FULLSCREEN_SCREENS.map((screen) => (
-            <Route key={screen.path} path={screen.path} element={<PlaceholderPage screen={screen} variant="fullscreen" />} />
-          ))}
+          <Route path="/sessoes/:sessionId/controle" element={guarded('sessions.run', <LiveControlPage />)} />
         </Route>
 
         <Route element={<AppLayout />}>
@@ -68,6 +69,8 @@ export default function App() {
           <Route path="/sessoes" element={<SessionsPage />} />
           <Route path="/sessoes/nova" element={guarded('sessions.run', <NewSessionPage />)} />
           <Route path="/sessoes/:sessionId" element={<SessionDetailPage />} />
+          <Route path="/sessoes/:sessionId/preparar" element={guarded('sessions.run', <PrepareSessionPage />)} />
+          <Route path="/sessoes/:sessionId/analise" element={<SessionAnalysisPage />} />
           <Route path="/estimulos" element={<StimuliPage />} />
           <Route path="/estimulos/:stimulusId" element={<StimulusDetailPage />} />
 

@@ -53,10 +53,14 @@ def clean_state(request):
 
     from app.db import engine, migrate
     from app.models import Base
+    from app.services import ingestion
+    from app.services.live_hub import hub
     from app.services.ratelimit import login_limiter
 
+    ingestion.drain()  # o processamento em segundo plano termina antes de o banco sumir
     request.getfixturevalue("client").cookies.clear()
     login_limiter.clear()
+    hub.reset()
     Base.metadata.drop_all(engine)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS alembic_version"))

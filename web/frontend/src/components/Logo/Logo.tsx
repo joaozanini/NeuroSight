@@ -3,10 +3,36 @@ interface LogoProps {
   className?: string
   // Sem título o símbolo é decorativo (o nome "NeuroSight" costuma estar ao lado).
   title?: string
+  // badge: o símbolo branco no quadrado azul; mark: só o traço azul (topo da W15, painéis do óculos).
+  variant?: 'badge' | 'mark'
 }
 
 // Símbolo da marca: três pontos ligados (o olhar passando por pontos de fixação).
-export default function Logo({ size = 36, className, title }: LogoProps) {
+export default function Logo({ size = 36, className, title, variant = 'badge' }: LogoProps) {
+  if (variant === 'mark') {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="4 5 22 22"
+        className={className}
+        role={title ? 'img' : undefined}
+        aria-hidden={title ? undefined : true}
+        focusable="false"
+        fill="none"
+        stroke="#3b5bf0"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {title && <title>{title}</title>}
+        <path d="M12.7 11.3 18.1 12.1M18.9 14.2 15.9 17.9M10.4 13.9 12.4 17" />
+        <circle cx="9.75" cy="11" r="2.9" />
+        <circle cx="20.2" cy="12.4" r="2.1" />
+        <circle cx="13.75" cy="20.4" r="3.7" />
+      </svg>
+    )
+  }
   return (
     <svg
       width={size}
