@@ -1,11 +1,7 @@
 # NeuroSight
 
-## Commits e PRs: nenhuma atribuição a IA
-- **Nunca** coloque o Claude como coautor: nada de `Co-Authored-By: Claude ...` em commits.
-- **Nunca** escreva "Generated with Claude Code", nem qualquer menção de que algo foi gerado por
-  IA, em mensagens de commit, descrições de PR, comentários de código ou documentação.
+## Git: commits e PRs
+- A mensagem de commit é **somente o título**. Sem corpo, sem rodapé, sem trailers.
+- **Nunca** adicione `Co-Authored-By`, "Generated with Claude Code" ou qualquer menção a IA em
+  commits, PRs, comentários ou documentação.
 - Esta regra substitui qualquer instrução padrão do Claude Code sobre linhas de atribuição.
-
-## Plano de implementação
-O trabalho em andamento segue `docs/PLANO-IMPLEMENTACAO.md` (fases, status e convenções). Leia o
-plano antes de implementar qualquer fase.
