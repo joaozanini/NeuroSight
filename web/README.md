@@ -1,15 +1,15 @@
 # QuestPro Eye-Tracking — Ambiente Web
 
 Plataforma web + API feita sob medida para o app
-**[QuestPro-EyeTracking](https://github.com/joaozanini/QuestPro-EyeTracking)** (Unreal Engine 5.5,
+**[QuestPro-EyeTracking](../quest-app/)** (pasta `quest-app/`, Unreal Engine 5.5,
 Meta Quest Pro): recebe as sessões de rastreamento ocular gravadas no headset, armazena em
 banco, monta o vídeo e permite **assistir cada sessão com ou sem heatmap do olhar**.
 
 ## 🎬 Demonstração
 
-![Demo do ambiente web](docs/demo-ambiente-web.gif)
+![Demo do ambiente web](../docs/demo-ambiente-web.gif)
 
-🎥 [Vídeo completo da demonstração (1 min, MP4)](docs/demo-ambiente-web.mp4)
+🎥 [Vídeo completo da demonstração (1 min, MP4)](../docs/demo-ambiente-web.mp4)
 
 ## O que faz
 
@@ -25,7 +25,7 @@ banco, monta o vídeo e permite **assistir cada sessão com ou sem heatmap do ol
 ## Arquitetura
 
 ```
-[Quest Pro — app UE 5.5]                [Este repositório]                      [Navegador]
+[Quest Pro — app UE 5.5]                [Esta pasta (web/)]                      [Navegador]
  botão B → upload em lotes  ──HTTP──►    backend/  FastAPI + SQLAlchemy          frontend/  React+Vite+TS
                                          ├─ SQLite (dev) / PostgreSQL (prod)     ├─ lista de sessões
  (ou adb pull + replay_session.py)       ├─ mídia em disco (frames + video.mp4)  ├─ <video> + <canvas>
@@ -34,7 +34,7 @@ banco, monta o vídeo e permite **assistir cada sessão com ou sem heatmap do ol
 
 O formato dos dados (`gaze.json`: `meta` + `frames[]` + `samples[]` com `uv` normalizado,
 origem top-left) é definido pelo app — veja o
-[README do app](https://github.com/joaozanini/QuestPro-EyeTracking#dados-gravados-por-sessão).
+[README do app](../quest-app/README.md#dados-gravados-por-sessão).
 
 ## Rodar em desenvolvimento (sem instalar banco)
 
