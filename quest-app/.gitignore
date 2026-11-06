@@ -1,0 +1,97 @@
+# ---- Unreal Engine ----
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+*.VC.db
+*.opensdf
+*.sdf
+*.sln
+*.suo
+*.xcodeproj
+*.xcworkspace
+
+# Plugins (apenas as pastas geradas dentro dos plugins)
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# ---- Python (tools) ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ---- Saída de análise local ----
+*.mp4
+session/
+sessions/
+
+# ---- Regras adicionais para UE5 + VR (Quest/Android) ----
+# Build/Generated
+/Build/Android/
+/Build/IOS/
+/Build/*/Android/
+
+# Android / Quest
+local.properties
+.gradle/
+.idea/
+/.gradle/
+/gradle/
+/gradlew
+/gradlew.bat
+*.apk
+*.aab
+*.obb
+*.so
+
+# Staged/Cooked builds
+Saved/StagedBuilds/
+Saved/Cooked/
+Saved/Crashes/
+
+# Intermediate and derived data
+/Engine/DerivedDataCache/
+DerivedDataCache/*
+
+# Visual Studio / Rider / IDE files
+.vscode/
+*.VC.VC.opendb
+*.vcxproj*
+*.user
+*.VC.db
+*.suo
+
+# Mac/Windows common
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Unreal user/project specific
+*.uproject.user
+*.uprojectdirs
+
+# Generated plugin build folders
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# Crash reports and diagnostics
+Saved/**/Crashes/
+Saved/**/Diagnostics/
+
+# Captures (profiling/screenshot) - enable if you check these in
+Saved/CaptureLogs/
+Saved/Profiling/
+
+# Ignore packaging output when using Unreal Frontend or AutomationTool
+/Engine/Binaries/Win64/UE4Editor-Cmd.exe
+
+# Keep workspace IDE helpers out
+.idea/
+.vscode/
